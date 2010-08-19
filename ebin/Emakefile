@@ -1,0 +1,4 @@
+{[
+  '../src/*'
+ ],
+ [report,{i,"../.."},{warn_format, 2},warn_unused_vars,warn_unused_import]}.

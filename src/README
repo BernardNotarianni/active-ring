@@ -1,0 +1,8 @@
+The src directory contains all Erlang source files for the Extreme
+Forge project.
+
+Naming:
+
+*_test.erl: developer tests
+other: application code
+

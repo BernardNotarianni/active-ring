@@ -1,0 +1,155 @@
+-*- mode: text; fill-column: 55 -*-
+(utf-8)
+
+* XP et programmation fonctionnelle
+
+XP est applicable et utile quel que soit le langage utilisé. En outre, Le choix du langage dépend de nombreux facteurs (humains, domaine métier, code existant...) autres que ses qualités intrinsèques.
+
+Cependant, quand c'est possible, choisir un langage puissant et adapté au mode de travail d'XP peut en démultiplier les avantages.
+
+La famille des langages dits "fonctionnels" présente plusieurs caractéristiques les rendant très adaptés à XP et en particulier au TDD.
+
+   "Well, there are agile languages and agile methods. When you put the two together you get agile squared." -- Ward Cunningham.
+
+** Introduction aux langages fonctionnels
+
+Lisp (Common Lisp, Scheme), ML (SML, Ocaml), Haskell, Erlang, Clean...
+
+Ces langages fonctionnels utilisent les fonctions plutôt que les
+objets ou procédures comme briques de base pour la construction de
+programmes.
+
+Leur objectif est de permettre, encourager voire imposer des fonctions sans effets de bord: le résultat en sortie ne dépend que des valeurs en entrée. On ne manipule plus des emplacements en mémoire: on évalue des expressions ne contenant plus que des valeurs et exprimant des relations entre elles.
+
+Pour que ce paradigme soit possible, pragmatique et utile pour la construction de vrais programmes, les langages fonctionnels comportent un sous-ensemble plus ou moins grand des caractéristiques suivantes:
+
+- les fonctions sont des citoyens de première classe, pouvant être manipulées comme des valeurs (affectées, passées en paramètres ou retournées);
+
+- des clôtures lexicales, fonctions anonymes pouvant être crées à l'exécution, de manière à ce qu'un bloc de code emporte avec lui une partie de son environnement (autres valeurs);
+
+- affectation unique et programmation par cas ("pattern matching") conduisant à un style récursif;
+
+- structures de données natives, notamment les listes;
+
+- constructeur d'ensemble;
+
+- gestion automatique de la memoire (ramasse-miette);
+
+- typage dynamique (ou inférence de type);
+
+- séparation des fonctions et des structures de données.
+
+L'ensemble de tout ça conduit à des programmes réputés:
+
+- courts et concis,
+
+- expressifs,
+
+- corrects et robustes.
+
+Cette dernière caractéristique devrait intéresser les développeurs XP, soucieux de qualité, mais dont les tests, s'ils sont omniprésents et considérables par rapport à une culture de développement traditionnelle, sont avant tout des outils de conception et de spécification, et ne sont pas conçus dans un souci d'exhaustivité ou de parade totale face aux facéties des programmes typiques.
+
+Quelques dates:
+
+Lisp: ~1959
+ML: ~1977
+Erlang: ~1988
+Haskell: ~1990
+
+**  Survol du langage Erlang
+
+Erlang est un langage développé et supporte par Ericsson:
+
+- fonctionnel strict
+- dynamiquement typé
+- programmation par cas
+- valeurs immuables
+- programmation concurrente (parallèle) a base de processus
+  séquentiels communicants
+
+Erlang est compilé en bytecode qui tourne sur une machine virtuelle. Erlang vient avec un 'environnement de dév' complet (compilateur, debugger, profiler), des librairies et diverses applications incluant Mnesia (base de données répartie, un serveur HTTP, un ORB CORBA).
+
+Erlang est développé et supporté par Ericsson ComputerScience lab et est distribué gratuitement sous une licence OpenSource depuis 1998.
+
+Erlang est un langage généraliste mais dont les caractéristiques uniques en termes de programmation concurrente le rende particuliérement adapté au développement de systèmes distribués (internet), notamment robustes et pseudo-temps-réel (télécommunications, contrôle-commande...).
+
+** Testabilité
+
+*** Cf. fp_tdd
+
+*** testabilité des programmes multi-"thread"
+
+Les applications actuelles sont de manière courante maintenant multi-threadées. Les problèmes surviennent lorsque l'on veut tester ces applications. Le but recherché en utilisant des threads est de lancer des traitements en parallèle. Ces traitements peuvent être, et le ceux généralement, interdépendant entre eux. Les threads sont gèrées par le système d'exploitation, leur lancement et leur sequencement ne sont donc pas PRÉDICTIBLES. 99% du temps tout se passera bien, mais en fonction de la charge machine ou d'un autre évenement externe, un 'nouvel' sequement de thread va réveler un bug, soit du à un accès concurrent à une variable, soit du à un interblocage. 
+Il est très dur de tester le comportement d'un application multi-thread. On peut facilement tester le comportement d'UN thread, et encore au prix d'une mise au point importante (lancement du thread, attente de X secondes ... ), mais lorsque l'application comporte un grand nombre de thread, l'ensemble ne sera jamais testé dans TOUS les cas de figures.
+
+>>> lister les outils, techniques... connues (devpartner?)
+
+Hormis les faiblesses de testabilité, le "multithreading", modèle de concurrence à mémoire partagée, présente plusieurs faiblesses conceptuelles ou contradictions avec l'objet et/ou XP:
+
+- rendre tout thread-safe? pas YAGNI... mais les modifier après coup est 1) risqué 2) viole OCP, on est obligé de modifier la classe originale.
+- C/C++: obligation de mettre des objets en portée globale, ou de créer/détruire les "objets actifs" à différents endroits...
+- décourage l′encapsulation
+
+Le langage Erlang inclue 'nativement' la notion de 'process'. Les 'process' s'apparentent aux threads dans la mesure où ils permettent dans réaliser des traitements en parallele. Les 'process' erlang, grâce aux propriétés des langages fonctionnels, sont totalement isolés les uns des autres et peuvent uniquement communiquer entre eux que par l'intermédiaire de messages asynchrones. Un process répondant uniquement aux 'excitations' d'un ensemble de messages, ils sont polymorphiques et peuvent être substitués par un nouveau de manière totalement transparent. L'unité de code étant la fonction, different process peuvent partager  très facilement différent 'set' de fonctions.
+
+Démontrer sa testabilité
+Un process reçoit et envoie des messages à n'importe qui, par conséquent l'intégration dans un programme de test est simple à réaliser. Un process testé isolement aura de manière certaine le même comportement dans la vraie "vie".
+
+Au pire, un système complexe révèlera un comportement inattendu en exploitation, en raison du côté aléatoire du séquenceur et/ou des charges machine ou réseau. Toutefois, tous les aléas se traduiront au final, pour un process donné, par une séquence de message qu'il suffira de simuler pour reproduire avec certitude le problème découvert.
+
+(On peut même tester localement un système multiprocess puis le déployer en distribué, sans changement de comportement).
+
+Exemple?
+
+** Abstraction, expressivite, DSL
+
+Expressivité:
+  concision (typage dynamique, compréhensions, )
+  clarté (referential transparency - pas d'effets de bord)
+  pattern matching
+  
+Abstraction (équivalent a l'héritage): fonction d'ordre superieur.
+
+DSL:
+
+Externes: fichier de config en langage natif (structures symboliques natives plutôt que XML).
+Internes: pseudo langage spécifique a un besoin, mais qui est en fait code en Erlang... (exemple: parser combinators?)
+Parsers: ...
+
+
+** Tableau comparatif des langages fonctionnels p/r a XP
+
+(indiquer typage dynamique ou statique)
+
+A FAIRE
+Trouver des exemples de code et montrer leur conception via TDD
+Trouver des façons de faire participer l'auditoire
+  - sondage a main levée (qui connaît un langage fonctionnel?)
+  - après un ou deux exemples (avec TDD ping pong) inviter quelqu'un a
+  essayer l'exemple suivant?
+
+Vérifier qu'on satisfait les remarques et questions ci-dessous.
+Vérifier que ça tient en 90 minutes.
+
+** Q&A
+
+*** Bien pour refactoring?
+
+- typage dynamique + filtrage simplifie la plupart des remaniements.
+- les modules sont indépendants
+- transparence référentielle induit une bonne plasticité (structure gigognes plutôt que graphes complexes).
+- la correction à chaud accélère le cycle de remaniement
+- certains refactorings spécifiques à Erlang.
+
+*** Typage statique ou dynamique?
+
+Typage statique utile pour:
+
+1) documenter
+
+2) vérifier des choses à la compilation
+
+Or, c'est un moyen imparfait d'atteindre ces deux objectifs. Au contraire, le TDD permet de les atteindre tous les deux, et rend alors superflu le typage statique.
+
+(N.B. typage statique est moins "lourd" dans les langages fonctionnels, car ils font en général de l'inférence).
+

@@ -1,0 +1,11 @@
+The following conventions must be applied throughout Extreme Forge
+code.
+
+Modules containing process code are named after a being, an agent, an
+actor... usually names ending in 'er' and 'or', e.g. tester.
+
+Processes always accept messages from any process and notify responses
+by using an abstract Notify function that is passed as the first
+argument to the process's init function.
+
+Don't write start() functions that hide the spawning.

@@ -1,0 +1,39 @@
+EXTREME FORGE
+
+http://extremeforge.net
+
+The aims of this software are:
+
+* To provide a complete, self-contained environment fulfilling the
+  needs of extreme programming teams.
+* To provide a complete, self-contained environment fulfilling the
+  needs of Erlang programmers.
+* To explore some of the ideas at the forefront of extreme
+  programming.
+* To facilitate adoption of extreme programming in corporate
+  environments, by automating or simplifying traditional needs such
+  as traceability, tracking, reporting, metrics...
+* To facilitate the use of extreme programming on distributed
+  projects, including open source ones.
+
+Requirements
+-----------
+
+Erlang/OTP R11B4 or above.
+Cf. http://www.erlang.org
+
+Installation
+------------
+
+Download the tarball, unpack to any convenient location.
+Change to the directory to which you unpacked.
+From the shell, run the 'install' script:
+
+% ./install
+
+This should print out some lines, ending with "done".
+
+LEGAL MATTERS
+-------------
+
+See the file COPYING located in the src directory.

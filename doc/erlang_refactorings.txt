@@ -1,0 +1,7 @@
+This document lists the refactorings we have identified for the Erlang language.
+
+* Add parameter
+
+Owing to the possible presence of several clauses and to the need to
+declare arity, adding a parameter to a function can be tedious.
+

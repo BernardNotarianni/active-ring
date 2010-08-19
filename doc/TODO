@@ -1,0 +1,18 @@
+-*- mode: text -*-
+
+Known issues:
+------------
+
+- a removed source file does not get removed from tester!!!
+
+Check for possible bugs:
+-----------------------
+
+Features?
+---------
+
+- detect -include dependencies and recompile (all? includers?) when .hrl changes
+- tests that never end (e.g. infinite loop)
+- run tests in parallel
+- run a single (specific) test
+- interrupt build/test (should saving a new file do that?)

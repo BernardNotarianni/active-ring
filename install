@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# -*- sh -*-
+
+hostname=`hostname -s`
+
+cd ebin
+erl -make
+erl -kernel error_logger "{file,\"../install_errors.log\"}" \
+    -sname extremeforge_installer@$hostname \
+    -noinput \
+    -run directory_tester run_once ".." \
+    -s init stop

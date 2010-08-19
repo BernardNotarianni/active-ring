@@ -1,0 +1,112 @@
+XP ET PROGRAMMATION FONCTIONNELLE
+
+  Nicolas Charpentier, Dominic Williams
+
+PLAN DE LA PRESENTATION (1h30)
+
+- Introduction aux langages fonctionnels
+- Survol du langage Erlang
+- Testabilité
+  - complexité des tests orientés objet
+  - simplicité des tests fonctionnels
+  - symbiose entre TDD et programmation par cas
+  - lamba, the ultimate mock
+  - programmation concurrente
+- DSL
+- Questions, discussion
+
+INTRO
+
+- La place du langage dans XP
+- Lisp (1958), ML (1977), Haskell (1987), Erlang (1991)...
+- Le paradigme fonctionnel
+  - fonctions pures (pas d'effets de bord, pas d'état)
+  - valeurs immuables, évaluation
+  - transparence référentielle
+- Les caractéristiques:
+  - fonctions de première classe
+  - pas d'assignation
+  - filtrage (programmation par cas)
+  - style récursif
+  - clôtures lexicales
+  - structures natives (notamment listes)
+  - constructeur d'ensemble
+  - typage dynamique (ou inférence)
+  - gestion de mémoire automatique (ramasse-miette)
+- Programmes courts, concision, expressifs, corrects et robustes
+
+SURVOL DU LANGAGE ERLANG
+
+- Langage 'industriel' supporté par Ericsson
+- Langage fonctionnel
+- Support 'natif' de parallélisme
+- Fonctionnement
+  - Machine virtuelle
+  - ByteCode chargé dynamiquement
+  - Machine virtuelle embarque un interpreteur
+- Librairies fournies dans le package:
+  - compilateur, debuggeur, profiler,
+  - Base de données reparties (Mnésia)
+  - ORB Corba
+  - Serveur HTTP
+  - GS: interfae graphique basée sur TK
+- Extensions pour la programmation distribuée
+  - Framework OTP
+  - Communication entre les machines virtuelles
+
+TESTABILITE
+
+- tests canoniques
+- les problèmes avec les objets:
+  - initialisation
+  - types de retour multiples ou complexes
+  - interrogation de l'état
+  - propagation des effets (modèle, relations)
+  - héritage
+- les solutions fonctionnelles:
+  - structures de données dynamiques
+  - filtrage
+
+Exemple de test unitaire fonctionnel:
+
+unique_test() ->
+  [] = unique([]),
+  [1, 3, 8] = unique([1, 3, 8]),
+  [1, 3, 6, 12] = unique([1, 1, 3, 1, 6, 12, 6, 1]).
+
+PROGRAMMATION PAR CAS (logique)
+
+- Exemple: contains/2
+
+LAMBDA, THE ULTIMATE MOCK
+
+- Test, code... et abstraction
+- Objet: héritage, interfaces... et mocks
+- Fonctionnel: fonction d'ordre supérieur
+  - interface intrinsèque
+  - passage nécessaire en argument
+  - lambda
+  - filtrage et typage dynamique
+- Exemple: first/2
+
+PROGRAMMATION CONCURRENTE
+
+- Beaucoup d'applications sont multi-threadées
+- Sont elle testable ?
+  - oui mais pas facilement
+- Est on certain du résultat ?
+  - non
+- Faiblesses conceptuelles du 'multithreading'
+  - Développement thread-safe et YAGNI
+  - Décourage l'encapsulation
+
+- Modèle Erlang
+  - Processus léger
+  - Processus isolés
+  - Aucunes données partagées
+  - Basé sur l'échange de messages asynchrones
+    
+
+DSL
+
+QUESTIONS

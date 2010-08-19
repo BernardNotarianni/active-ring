@@ -1,0 +1,94 @@
+XP Dojo: plan de la présentation (2 heures)
+
+- Intro
+- Motivations
+- Binômage virtuel
+- Etat des lieux + démo
+- Ergonomie pilotée par les tests     
+- Intégration instantanée
+- Questions, discussion
+
+INTRO
+
+  Nicolas Charpentier, Dominic Williams, XP Dojo
+
+MOTIVATIONS
+
+* Le besoin
+  - XP amène de nouveaux besoins ergonomique
+    - Navigation dans le code (applicatif et code)
+    - Binommage
+    - Besoin d'outils 'simple'
+  
+  - Des progrès récent
+    - Outils modernes plus riches
+    - Parfois limités, et pas 'totalement' orientés XP
+    - Concerne le monde Java
+    - Les outils restent hétorogènes.
+  
+* Un laboratoire
+  - se perfectionner à XP
+  - explorer convictions techniques et méthodologiques 
+
+* Logiciel libre et XP
+
+  - Avantages:
+     - livraisons fréquentes
+     - qualité
+
+  - adapter XP ?
+     - binômage
+     - vélocité
+     - client
+     - propriété collective
+
+  - XP Dojo répondra à ces besoins
+
+  - Vision: amplifier, extrémiser
+     - scénarios "séance"
+     - intégration instantanée
+     - simplicité, expressivité, métaphore
+     - tests de recette accessibles à la communauté
+     - priorités, vote
+
+  - Bénéfices pour projets classiques
+
+ETAT DES LIEUX
+
+  - Présentation des participants
+  - TDD 'réactif'
+  - Automatisation des tâches de 'build'
+  - Démo
+
+BINOMAGE VIRTUEL
+
+* Retour d'expérience
+  - Contraintes matérielles
+  - Combinaison logicielle complexe à trouver
+  - Rythme/Motivation difficile à trouver
+  - Technique de binomage nouvelle.
+
+* Vision XP Dojo
+
+  - présence, groupes
+  - voix
+  - programmation
+
+  - Bénéfices généraux :
+     - multisite
+     - bureaux normaux
+     - "coup de main"
+     - réglages personnels 
+
+
+ERGONOMIE PILOTEE PAR LES TESTS
+
+  - Faciliter la navigation code/test
+  - Génération des modules applicatifs au rythme des TU
+
+INTEGRATION INSTANTANEE
+
+  - pourquoi accélérer
+  - piloter par les tests
+  - refactoring
+  - suppression d'un outil externe

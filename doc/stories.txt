@@ -1,0 +1,274 @@
+-*- mode: text; fill-column: 80 -*-
+
+In ExtremeProgramming, the features of the software are described in
+the form of UserStories, which is a short narrative describing someone
+(or some other system) using the software for something. UserStories
+should not have many details: these are in the corresponding
+CustomerTests.
+
+XP Dojo's user stories are very fine-grained, so that it is possible
+to develop one completely within a typical session for its developers
+(one or two hours). Therefore, to assist readers in understanding XP
+Dojo from its stories, several of these are often grouped under a
+heading with an introductory paragraph.  Within a heading, each bullet
+item is a story. Sub-bullets are sequential events in the story.
+
+Paragraphs below that are not bulleted probably need breaking down...
+
+= Preliminaries =
+
+== Licence ==
+
+XP Dojo is (C) Dominic Williams, Nicolas Charpentier, Virgile
+Delecolle, Fabrice Nourisson and Jacques Couvreur, and distributed
+under the revised BSD licence.
+
+* The copyright and licence is inserted at the top of each source
+file.
+
+== System Requirements ==
+
+* Runs under Windows, Mac OS X, Linux and BSD.
+* Requires Erlang/OTP only.
+
+== Installation ==
+
+* Install from source.
+* Install the binary distribution on Windows.
+* Install the binary distribution on Mac OS X.
+* Install on NetBSD etc. with pkgsrc.
+* Use from a Live CD distribution
+
+= Running =
+
+== Running the server ==
+
+* Starting a server
+* Adding nodes to a server
+
+== Starting a client ==
+
+* The command-line client is started by opening an Erlang shell (erl
+  or werl).
+* The graphical client is started by calling
+  application:start(xpdojo_client) from an Erlang shell
+* The Web client is started by opening the appropriate URL from any
+  Web browser.
+
+== Upgrading ==
+
+XP Dojo may be upgraded without stopping the software.
+
+* Upgrading manually
+* Upgrading automatically
+
+= Browsing code =
+
+The code organisation, in each of the supported languages, is
+presented in a structured, uniform manner, regardless of the
+underlying filesystem organisation. Navigation is also possible by
+following cross-references within the code itself. Code is displayed
+one function at a time.
+
+* Command-line synopsis
+* Graphical client synopsis
+* Web synopsis
+
+== Browsing Erlang code from the command line ==
+
+* Listing Erlang applications
+* Listing Erlang modules
+* Listing Erlang functions
+* Displaying an Erlang function
+* Listing the tests of an Erlang function
+* Displaying a test of an Erlang function
+
+== Browsing C code from the command line ==
+
+* Listing C programs
+* Listing C modules
+* Listing C functions
+* Displaying a C function
+* Listing C types
+* Displaying a C type
+* Listing C globals
+* Displaying a C global definition
+
+== Browsing Erlang code from the graphical client ==
+
+The graphical client is a single window containing (from top to
+bottom): a menu bar, a synopsis area, three scrolled lists side by
+side, two editors side by side, and a status bar.
+
+* Selecting an Erlang application
+* Selecting an Erlang module
+* Selecting an Erlang function
+* Selecting the test of an Erlang function
+
+== Browsing Erlang code on the Web ==
+
+* Selecting an Erlang application
+* Selecting an Erlang module
+* Selecting an Erlang function
+* Selecting the test of an Erlang function
+
+= Test driven development =
+
+Unit tests drive most development actions :
+
+== Test driven Erlang development from the command line ==
+
+* Creating an Erlang module.
+* Adding an exported Erlang function to a module.
+* Adding an unexported Erlang function to a module.
+* Modifying the arity of an Erlang function.
+
+* Modify the process dictionary before and after running tests (help
+  ensure code doesn't use it).
+
+= Refactoring =
+
+Programmers may select from many refactorings to be performed
+automatically.
+
+== Refactoring Erlang from the command line ==
+
+* Renaming an Erlang module
+* Renaming an Erlang function
+* Extracting an unexported Erlang function.
+
+= Feedback =
+
+Code is continuously and automatically compiled in the background.
+
+Unit tests are continuously run in the background, and results
+displayed on the fly.
+
+Acceptance tests are continuously run in the background and results
+displayed.
+
+Programmers can undo an unlimited number of changes, or revert
+directly to any previous stable state.
+
+= Code mutation =
+
+Code is automatically mutated in order to detect untested code, and to
+compute a traceability matrix between code and user stories.
+
+
+= Team work =
+
+Development is carried out by any number of programmers (pairs)
+working simultaneously.
+
+A session (and sandbox) is automatically created when unit tests are
+modified such that they fail. The session is automatically closed,
+and the code committed to the server, when they are 100% again and
+there are no regressions on acceptance tests. In the meantime, at any
+time, a session may be returned to the previous 100% state.
+
+Each time a pair commits a modification, every other active session
+receives an immediate update. If the same change set may be applied
+locally without breaking any tests, XP Dojo applies it automatically,
+otherwise it puts it in a queue for the programmers to apply manually.
+
+The same function may be modified concurrently in separate sessions,
+but a visual indication is provided for each line of code modified by
+another pair.
+
+= Collective code ownership =
+
+In extreme programming, the code is collectively owned by all the
+developers. XP Dojo helps to achieve collective code ownership in the
+following ways:
+
+* For each module, a chart ranks developers by number of changes to
+  that module, percentage of all developer's changes spent on that
+  module, or by most recent change to the module.
+
+* For each developer, a chart ranks modules by number of changes to
+  that module, percentage of all developer's changes spent on that
+  module, or by most recent change to the module
+
+= Coding standard =
+
+One important practice that contributes to collective code ownership
+is using a consistent style in the code:
+
+* Regardless of the style and formatting used when entering code, code
+  is stored and displayed in a consistent way, according to
+  customisable rules.
+
+* The graphical client forces code into the standard format
+  on-the-fly, as it is being entered.
+
+* Modifications to the style rules are automatically applied
+  throughout the code.
+
+* Each symbol must comply with the naming standard for its
+  category. Naming standards are programmable rules.
+
+* Naming standards may be modified, and the modification applied to
+  existing symbols by providing a transformation rule.
+
+* Hooks are provided to define higher order coding standards.
+
+= Frequent releases =
+
+* Code may be exported for release as a binary distribution
+
+* Code may be exported for release as a source distribution
+
+* For source code releases, a copyright notice may be automatically
+  inserted into each exported source file
+
+* Release bundles may be built using only modules actually used by
+  the acceptance tests.
+
+= Distributed extreme programming =
+
+A list of currently connected users is displayed.
+
+Two connected users may pair up on a task:
+
+* They see the same screen, but only the driver may modify it
+
+* A special test/code mode supports automatic switching of drivers
+  when a test is added and when it passes.
+
+* They are connected by SoftPhone (or console chat as a fallback or
+  for low bandwidth connections).
+
+* Sessions may be started on one machine, and instantly continued on
+  a different machine.
+
+= Customization =
+
+In addition to being open source and open to contributions, XP Dojo
+can be enriched and customised in two ways:
+
+* the command line interface may be used to write scripts
+
+* hooks are provided for Erlang or Python code to modify the default
+  behaviour, e.g.:
+
+** sorting function for module and function lists
+** actions to be performed at certain key moments (such as a
+   successful or a failed build, a new passing customer test...)
+
+==============================================================================
+MORE IDEAS BELOW, need digesting...
+==============================================================================
+
+User stories may be listed and prioritised, and linked to
+corresponding acceptance tests.
+
+In Erlang and C, the expression preceding the current cursor position
+can be evaluated, and its result displayed (as in Emacs-lisp).
+
+Every interaction with the server is logged, and may be undone and
+replayed.
+
+Import code from an existing project.
+
+Idée (de RJ):No need to make a snapshot of the entire codeline, though in a more "real"system, my fantasy is that every green bar updates every computer in theuniverse with the version that just went green.De moi (inspiré par Joe):Marqué tous les modules (y compris de la distrib Erlang) utilisés lors del'exécution des tests de recettes, et utiliser cette liste pour préparerun package de livraison le plus compacte possible.
