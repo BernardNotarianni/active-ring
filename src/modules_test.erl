@@ -48,7 +48,7 @@ includes_tree () ->
       [{file, "eg_include_in_dir.hrl", "-define(eg_macro2,nok)."}]},
      {file, "eg_code_include_with_path.erl",
       ["-module (eg_code_include_with_path).",
-       "-include (\"dir/eg_include_in_dir.hrl\").",
+       "-include (\"dir/eg_include_in_dir.xxx\").",
        "-export ([ok/0]).",
        "ok () -> ok."]}].
 
@@ -61,5 +61,5 @@ includes (Root, _) ->
     With = filename: join (Root, "eg_code_with_include.erl"),
     ["eg_include.hrl"] = modules: includes (With),
     With_path = filename: join (Root, "eg_code_include_with_path.erl"),
-    ["dir/eg_include_in_dir.hrl"] = modules: includes (With_path),
+    ["dir/eg_include_in_dir.xxx"] = modules: includes (With_path),
     ok.
