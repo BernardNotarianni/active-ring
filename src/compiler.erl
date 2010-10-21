@@ -13,7 +13,7 @@ init (Notify, Dirs) ->
 init (Notify, Dirs, Options) ->
     Watchers = lists: foldl (fun watcher/2, [], Dirs),
     Includes = [{i, D} || D <- Dirs],
-    State = {dict: new (), dict: new (), [], [], Includes ++ Options},
+    State = {dict: new (), dict: new (), dict: new (), [], Includes ++ Options},
     loop (Notify, Watchers, State).
 
 watcher (Dir, Acc) ->
@@ -118,8 +118,8 @@ notify_result ({ok, _, _, Warnings}, Notify) ->
 notify_result ({error, Errors, Warnings},Notify) ->
     Notify ({Errors, Warnings}).
 
-binaries ({ok, _, B, _}, Bs) ->
-    [B | Bs];
+binaries ({ok, M, B, _}, Bs) ->
+    dict: store (M, B, Bs);
 binaries ({error, _, _}, Bs) ->
     Bs.
 
@@ -127,8 +127,11 @@ notify_end (Notify, State) ->
     {Modules, _,  _, _, _} = State,
     notify_end (Notify, totals (Modules), State).
 
-notify_end (Notify, {N, N, N}, {Modules, Includes, Binaries, Removed, Options}) ->
-    Notify ({{binaries, Binaries}, {removed, Removed}}),
-    {Modules, Includes, [], [], Options};
+notify_end (Notify, {N, N, N}, State) ->
+    {Modules, Includes, Binaries, Removed, Options} = State,
+    Value = fun (_, V, Vs) -> [V | Vs] end,
+    Bs = dict: fold (Value, [], Binaries),
+    Notify ({{binaries, Bs}, {removed, Removed}}),
+    {Modules, Includes, dict: new (), [], Options};
 notify_end (_, _, State) ->
     State.

@@ -12,6 +12,7 @@
 -export ([notifies_removed_files/0]).
 -export ([notifies_removed_files_even_if_never_compiled/0]).
 -export ([provides_all_binaries_not_just_latest_when_all_compiled/0]).
+-export ([provides_correct_binaries_not_just_latest_when_all_compiled/0]).
 -export ([can_be_given_include_directories/0]).
 -export ([discovers_hrl_files_and_includes_their_path/0]).
 %% -export ([recompiles_includers/0]).
@@ -54,6 +55,10 @@ recompiles_minimally_after_change () ->
 
 provides_all_binaries_not_just_latest_when_all_compiled () ->
     F = fun provides_all_binaries_not_just_latest_when_all_compiled/2,
+    ok = fixtures: use_tree (bad_erl_tree (), F).
+
+provides_correct_binaries_not_just_latest_when_all_compiled () ->
+    F = fun provides_correct_binaries_not_just_latest_when_all_compiled/2,
     ok = fixtures: use_tree (bad_erl_tree (), F).
 
 can_start_empty_and_add_files () ->
@@ -155,6 +160,24 @@ provides_all_binaries_not_just_latest_when_all_compiled (Root, [_, File]) ->
     ok = file: write_file (filename: join (Root, Filename), Bin),
     Compiler ! check,
     [{2, 1, 1}, {2, 2, 2}, {{binaries, [_, _]}, _}] = receive_all (),
+    ok.
+
+provides_correct_binaries_not_just_latest_when_all_compiled (Root, [G, B]) ->
+    Compiler = spawn_link (compiler, init, [notify_me (), [Root]]),
+    Compiler ! check,
+    [{2, 0, 0}, _, _, {2, 2, 1}] = receive_all (),
+    {file, Good_file_name, _} = G,
+    {file, Bad_file_name, _} = B,
+    G_new = list_to_binary ("-module(hello). -export([h/0]). h()->hello."),
+    B_new = list_to_binary ("-module(gdbye). -export([run/0]). run()->gdbye."),
+    ok = file: write_file (filename: join (Root, Good_file_name), G_new),
+    ok = file: write_file (filename: join (Root, Bad_file_name), B_new),
+    Compiler ! check,
+    [{2, 0, 0}, {2, 1, 1}, {2, 2, 2}, {{binaries, Bins}, _}] = receive_all (),
+    2 = length (Bins),
+    [_, G_bin] = Bins,
+    {ok, {hello, [{exports, Exports}]}} = beam_lib: chunks (G_bin, [exports]),
+    true = lists: member ({h,0}, Exports),
     ok.
 
 recompiles_minimally_after_change (Root, _) ->
