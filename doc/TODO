@@ -12,6 +12,7 @@ Features?
 ---------
 
 - detect -include dependencies and recompile (all? includers?) when .hrl changes
+- run recently failed tests first (even after everything passes)
 - tests that never end (e.g. infinite loop)
 - run tests in parallel
 - run a single (specific) test
