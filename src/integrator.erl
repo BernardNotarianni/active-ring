@@ -31,6 +31,9 @@ store_compilation ({File, Module, errors, Errors}, State) ->
     State#state {bad = [File | State#state.bad]};
 store_compilation ({_, Module, ok, Binary}, State) ->
     State#state.channel ! {compile, {Module, ok}},
+    State#state {compiled = [Binary | State#state.compiled]};
+store_compilation ({_, Module, warnings, {Ws, Binary}}, State) ->
+    State#state.channel ! {compile, {Module, warnings, Ws}},
     State#state {compiled = [Binary | State#state.compiled]}.
 
 totals (State) ->
@@ -38,4 +41,4 @@ totals (State) ->
     B = length (State#state.bad),
     C = length (State#state.compiled),
     Modules = U + B + C,
-    State#state.channel ! {totals, {Modules, U, C, 0, 0, 0}}.
+    State#state.channel ! {totals, {Modules, C, B, 0, 0, 0}}.

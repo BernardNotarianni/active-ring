@@ -17,10 +17,13 @@ single_file () ->
     Test_data =
 	[{"bla",
 	  fun (E) -> {mymodule, errors, _} = E end,
-	  {1,0,0,0,0,0}},
+	  {1,0,1,0,0,0}},
 	 {"-module(mymodule).",
 	  fun (E) -> {mymodule, ok} = E end,
-	  {1,0,1,0,0,0}}],
+	  {1,1,0,0,0,0}},
+	 {"-module(mymodule). unused() -> ok.",
+	  fun (E) -> {mymodule, warnings, _} = E end,
+	  {1,1,0,0,0,0}}],
     lists: foreach (fun single_file/1, Test_data).
     
 single_file ({Content, Test_event, Last_totals}) ->
@@ -31,7 +34,7 @@ single_file ({Content, Test_event, Last_totals}) ->
 		   {totals, {0,0,0,0,0,0}} = receive_one (),
 		   Filename = filename: join (Root, F),
 		   Integrator ! {{file, ".erl"}, Filename, found},
-		   {totals, {1,1,0,0,0,0}} = receive_one (),
+		   {totals, {1,0,0,0,0,0}} = receive_one (),
 		   {compile, Event} = receive_one (),
 		   Test_event (Event),
 		   {totals, Last_totals} = receive_one (),

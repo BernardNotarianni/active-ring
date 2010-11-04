@@ -6,11 +6,14 @@
 -test (module_name).
 -test (locate).
 -test (includes).
+-test (doesnt_compile).
+-test (compiles_with_warnings).
 -export ([module_name/0]).
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
 -export ([doesnt_compile/0]).
+-export ([compiles_with_warnings/0]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -73,3 +76,13 @@ doesnt_compile (Root, [{file, F, _}]) ->
     Filename = filename: join (Root, F), 
     {Filename, mymodule, errors, _} = modules: compile2 (Filename),
     ok.
+
+compiles_with_warnings () ->
+    Tree = [{file, "mymodule.erl", "-module(mymodule). unused()->ok."}],
+    ok = fixtures: use_tree (Tree, fun compiles_with_warnings/2).
+
+compiles_with_warnings (Root, [{file, F, _}]) ->
+    Filename = filename: join (Root, F), 
+    {Filename, mymodule, warnings, _} = modules: compile2 (Filename),
+    ok.
+    
