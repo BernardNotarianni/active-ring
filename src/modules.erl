@@ -10,6 +10,18 @@
 -export ([module_name/1]).
 -export ([locate/2]).
 -export ([includes/1]).
+-export ([compile2/1]).
+
+compile2 (File_name) ->
+    case compile (File_name, []) of
+	{ok, Module, Binary, []} ->
+	    {File_name, Module, ok, Binary};
+	{ok, Module, Binary, Warnings} ->
+	    {File_name, Module, warnings, {Binary, Warnings}};
+	{error, Errors, Warnings} ->
+	    Module = module_name (File_name),
+	    {File_name, Module, errors, {Errors, Warnings}}
+    end.
 
 to_binary (File_name) ->
     {ok, _, Binary, _} = compile (fun compile: file/2, File_name, []),

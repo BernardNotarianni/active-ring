@@ -10,6 +10,7 @@
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
+-export ([doesnt_compile/0]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -62,4 +63,13 @@ includes (Root, _) ->
     ["eg_include.hrl"] = modules: includes (With),
     With_path = filename: join (Root, "eg_code_include_with_path.erl"),
     ["dir/eg_include_in_dir.xxx"] = modules: includes (With_path),
+    ok.
+
+doesnt_compile () ->
+    Tree = [{file, "mymodule.erl", "bla"}],
+    ok = fixtures: use_tree (Tree, fun doesnt_compile/2).
+
+doesnt_compile (Root, [{file, F, _}]) ->
+    Filename = filename: join (Root, F), 
+    {Filename, mymodule, errors, _} = modules: compile2 (Filename),
     ok.

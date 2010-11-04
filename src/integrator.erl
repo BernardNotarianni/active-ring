@@ -1,6 +1,6 @@
 -module (integrator).
 -export ([init/1]).
--record (state, {channel, uncompiled = [], bad = []}).
+-record (state, {channel, uncompiled = [], bad = [], compiled = []}).
 
 init (Channel) ->
     State = #state {channel = Channel},
@@ -21,17 +21,21 @@ idle (State) ->
 
 compiling (#state {uncompiled = [F | Fs]} = State) ->
     totals (State),
-    case modules: compile (F) of
-	{error, Errors, _} ->
-	    State#state.channel ! {errors, {F, Errors}},
-	    Bad = [F | State#state.bad],
-	    compiling (State#state {uncompiled = Fs, bad = Bad})
-    end;
+    Next = store_compilation (modules: compile2 (F), State),
+    compiling (Next#state {uncompiled = Fs});
 compiling (#state {uncompiled = []} = State) ->
     idle (State).
-	    
+
+store_compilation ({File, Module, errors, Errors}, State) ->
+    State#state.channel ! {compile, {Module, errors, Errors}},
+    State#state {bad = [File | State#state.bad]};
+store_compilation ({_, Module, ok, Binary}, State) ->
+    State#state.channel ! {compile, {Module, ok}},
+    State#state {compiled = [Binary | State#state.compiled]}.
+
 totals (State) ->
     U = length (State#state.uncompiled),
     B = length (State#state.bad),
-    Total = U + B,
-    State#state.channel ! {totals, Total, U, 0, 0, 0, 0}.
+    C = length (State#state.compiled),
+    Modules = U + B + C,
+    State#state.channel ! {totals, {Modules, U, C, 0, 0, 0}}.
