@@ -6,14 +6,11 @@
 -test (module_name).
 -test (locate).
 -test (includes).
--test (doesnt_compile).
--test (compiles_with_warnings).
 -export ([module_name/0]).
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
--export ([doesnt_compile/0]).
--export ([compiles_with_warnings/0]).
+-export ([with_files/2]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -68,21 +65,11 @@ includes (Root, _) ->
     ["dir/eg_include_in_dir.xxx"] = modules: includes (With_path),
     ok.
 
-doesnt_compile () ->
-    Tree = [{file, "mymodule.erl", "bla"}],
-    ok = fixtures: use_tree (Tree, fun doesnt_compile/2).
-
-doesnt_compile (Root, [{file, F, _}]) ->
-    Filename = filename: join (Root, F), 
-    {Filename, mymodule, errors, _} = modules: compile2 (Filename),
-    ok.
-
-compiles_with_warnings () ->
-    Tree = [{file, "mymodule.erl", "-module(mymodule). unused()->ok."}],
-    ok = fixtures: use_tree (Tree, fun compiles_with_warnings/2).
-
-compiles_with_warnings (Root, [{file, F, _}]) ->
-    Filename = filename: join (Root, F), 
-    {Filename, mymodule, warnings, _} = modules: compile2 (Filename),
+with_files (Root, Fs) ->
+    Ps = [filename: join (Root, F) || {file, F, _} <- lists: sublist (Fs, 3)],
+    [Compiles, Doesnt, Warnings] = Ps,
+    {Compiles, compiles, ok, _} = modules: compile2 (Compiles),
+    {Doesnt, doesnt_compile, errors, _} = modules: compile2 (Doesnt),
+    {Warnings, warnings, warnings, _} = modules: compile2 (Warnings),
     ok.
     

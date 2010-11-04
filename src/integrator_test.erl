@@ -1,7 +1,7 @@
 -module (integrator_test).
--test (exports).
+-test (start_stop).
+-export ([with_files/2]).
 -export ([start_stop/0]).
--export ([single_file/0]).
 
 start_stop () ->
     Args = [self ()],
@@ -13,34 +13,25 @@ start_stop () ->
     false = is_process_alive (Integrator),
     ok.
 
-single_file () ->
-    Test_data =
-	[{"bla",
-	  fun (E) -> {mymodule, errors, _} = E end,
-	  {1,0,1,0,0,0}},
-	 {"-module(mymodule).",
-	  fun (E) -> {mymodule, ok} = E end,
-	  {1,1,0,0,0,0}},
-	 {"-module(mymodule). unused() -> ok.",
-	  fun (E) -> {mymodule, warnings, _} = E end,
-	  {1,1,0,0,0,0}}],
-    lists: foreach (fun single_file/1, Test_data).
-    
-single_file ({Content, Test_event, Last_totals}) ->
-    fixtures: use_tree (
-      [{file, "mymodule.erl", Content}],
-      fun (Root, [{file, F, _}]) ->
-	      Integrator = spawn_link (integrator, init, [self ()]),
-		   {totals, {0,0,0,0,0,0}} = receive_one (),
-		   Filename = filename: join (Root, F),
-		   Integrator ! {{file, ".erl"}, Filename, found},
-		   {totals, {1,0,0,0,0,0}} = receive_one (),
-		   {compile, Event} = receive_one (),
-		   Test_event (Event),
-		   {totals, Last_totals} = receive_one (),
-		   Integrator ! stop,
-		   ok
-	   end).
+with_files (Root, Fs) ->
+    Ps = [filename: join (Root, F) || {file, F, _} <- Fs],
+    [Compiles, Doesnt, Warnings, _] = Ps,
+    Integrator = spawn_link (integrator, init, [self ()]),
+    {totals, {0,0,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Compiles, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {compiles, ok}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (), 
+    Integrator ! {{file, ".erl"}, Doesnt, found},
+    {totals, {2,1,0,0,0,0}} = receive_one (),
+    {compile, {doesnt_compile, errors, _}} = receive_one (),
+    {totals, {2,1,1,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Warnings, found},
+    {totals, {3,1,1,0,0,0}} = receive_one (),
+    {compile, {warnings, warnings, _}} = receive_one (),
+    {totals, {3,2,1,0,0,0}} = receive_one (),
+    Integrator ! stop,
+    ok.
 
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
