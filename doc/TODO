@@ -17,3 +17,5 @@ Features?
 - run tests in parallel
 - run a single (specific) test
 - interrupt build/test (should saving a new file do that?)
+- provide time information (total build/test time, time for each test)
+- fixtures
