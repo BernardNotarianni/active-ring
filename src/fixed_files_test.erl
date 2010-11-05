@@ -16,12 +16,14 @@ tree () ->
        "unused () -> unused."]},
      {file, "good_test.erl",
       ["-module (good_test).",
-       "-test (test).",
-       "test () -> ok."]}].
+       "-test (exports).",
+       "-export ([test1/0, test2/0]).",
+       "test1 () -> ok.",
+       "test2 () -> ok."]}].
 
 run () ->
     ok = fixtures: use_tree (tree (), fun run/2).
 
 run (Root, Tree) ->
-    ok = integrator_test: with_files (Root, Tree),
-    ok = modules_test: with_files (Root, Tree).
+    ok = modules_test: with_files (Root, Tree),
+    ok = integrator_test: with_files (Root, Tree).

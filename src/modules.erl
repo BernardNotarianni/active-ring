@@ -14,13 +14,12 @@
 
 compile2 (File_name) ->
     case compile (File_name, []) of
-	{ok, Module, Binary, []} ->
-	    {File_name, Module, ok, Binary};
 	{ok, Module, Binary, Warnings} ->
-	    {File_name, Module, warnings, {Binary, Warnings}};
+	    {File_name, Module, Tests} = tests: filter_by_attribute (Binary),
+	    {File_name, Module, ok, {Binary, Tests, Warnings}};
 	{error, Errors, Warnings} ->
 	    Module = module_name (File_name),
-	    {File_name, Module, errors, {Errors, Warnings}}
+	    {File_name, Module, error, {Errors, Warnings}}
     end.
 
 to_binary (File_name) ->

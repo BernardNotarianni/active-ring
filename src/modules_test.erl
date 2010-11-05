@@ -66,10 +66,16 @@ includes (Root, _) ->
     ok.
 
 with_files (Root, Fs) ->
-    Ps = [filename: join (Root, F) || {file, F, _} <- lists: sublist (Fs, 3)],
-    [Compiles, Doesnt, Warnings] = Ps,
-    {Compiles, compiles, ok, _} = modules: compile2 (Compiles),
-    {Doesnt, doesnt_compile, errors, _} = modules: compile2 (Doesnt),
-    {Warnings, warnings, warnings, _} = modules: compile2 (Warnings),
+    Ps = [filename: join (Root, F) || {file, F, _} <- lists: sublist (Fs, 4)],
+    [Compiles, Doesnt, Warnings, Has_tests] = Ps,
+    {Compiles, compiles, ok, {Bin1, [], []}} = modules: compile2 (Compiles),
+    {Compiles, 3} = modules: locate ({compiles, ok, 0}, Bin1),
+    {Doesnt, doesnt_compile, error, {Es, []}} = modules: compile2 (Doesnt),
+    [{Doesnt, [{1, erl_lint, undefined_module}, _]}] = Es,
+    {Warnings, warnings, ok, {Bin2, [], Ws}} = modules: compile2 (Warnings),
+    {Warnings, 4} = modules: locate ({warnings, unused, 0}, Bin2),
+    [{Warnings, [{4, erl_lint, {unused_function, _}}]}] = Ws,
+    {Has_tests, good_test, ok, {_, Tests, _}} = modules: compile2 (Has_tests),
+    [test2, test1] = Tests,
     ok.
     
