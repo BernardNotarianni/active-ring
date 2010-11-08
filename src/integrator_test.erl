@@ -1,7 +1,9 @@
 -module (integrator_test).
 -test (start_stop).
+-test (modified_files_are_recompiled).
 -export ([with_files/2]).
 -export ([start_stop/0]).
+-export ([modified_files_are_recompiled/0]).
 
 start_stop () ->
     Args = [self ()],
@@ -41,6 +43,26 @@ new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     Integrator ! stop,
     ok.
 
+modified_files_are_recompiled () ->
+    Tree = [{file, "foo.erl", "foo"}],
+    fixtures: use_tree (Tree, fun modified_files_are_recompiled/2).
+
+modified_files_are_recompiled (Root, [{file, F, _}]) ->
+    Filename = filename: join (Root, F),
+    Integrator = spawn_link (integrator, init, [self()]),
+    {totals, {0,0,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Filename, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {foo, error, _}} = receive_one (),
+    {totals, {1,0,1,0,0,0}} = receive_one (),
+    Content = list_to_binary ("-module(foo)."),
+    ok = file: write_file (Filename, Content),
+    Integrator ! {{file, ".erl"}, Filename, changed},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {foo, ok, _}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (),
+    Integrator ! stop,
+    ok.
+
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
-

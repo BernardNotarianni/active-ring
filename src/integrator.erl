@@ -1,49 +1,44 @@
 -module (integrator).
 -export ([init/1]).
--record (state,
-	 {channel,
-	  uncompiled = [],
-	  bad = [],
-	  compiled = [],
-	  tests = []}).
+-import (dict, [new/0, store/3, fold/3]).
 
 init (Channel) ->
-    State = #state {channel = Channel},
-    idle (State).
+    idle (Channel, new ()).
 
-idle (State) ->
-    totals (State),
+idle (Channel, Modules) ->
+    Channel ! totals (Modules),
     receive
 	stop ->
-	    State#state.channel ! stopped;
+	    Channel ! stopped;
 	{{file, ".erl"}, F, found} ->
-	    Fs = [F | State#state.uncompiled],
-	    compiling (State#state {uncompiled = Fs});
+	    compiling (F, Channel, store (F, new, Modules));
+	{{file, ".erl"}, F, changed} ->
+	    compiling (F, Channel, store (F, changed, Modules));
 	Other ->
-	    State#state.channel ! {unexpected, Other},
-	    idle (State)
+	    Channel ! {unexpected, Other},
+	    idle (Channel, Modules)
     end.
 
-compiling (#state {uncompiled = [F | Fs]} = State) ->
-    totals (State),
-    Next = store_compilation (modules: compile2 (F), State),
-    compiling (Next#state {uncompiled = Fs});
-compiling (#state {uncompiled = []} = State) ->
-    idle (State).
+compiling (F, Channel, Modules) ->
+    Channel ! totals (Modules),
+    Next = store_compilation (modules: compile2 (F), Channel, Modules),
+    idle (Channel, Next).
 
-store_compilation ({File, Module, error, Errors}, State) ->
-    State#state.channel ! {compile, {Module, error, Errors}},
-    State#state {bad = [File | State#state.bad]};
-store_compilation ({_, Module, ok, {Binary, Ts, Ws}}, State) ->
-    State#state.channel ! {compile, {Module, ok, Ws}},
-    Compiled = [Binary | State#state.compiled],
-    Tests = [{Module, T} || T <- Ts] ++ State#state.tests,
-    State#state {compiled = Compiled, tests = Tests}.
+store_compilation ({File, Module, error, Errors}, Channel, Modules) ->
+    Channel ! {compile, {Module, error, Errors}},
+    store (File, error, Modules);
+store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, Channel, Modules) ->
+    Channel ! {compile, {Module, ok, Ws}},
+    store (File, {ok, Module, Binary, Ts}, Modules).
 
-totals (State) ->
-    U = length (State#state.uncompiled),
-    B = length (State#state.bad),
-    C = length (State#state.compiled),
-    T = length (State#state.tests),
-    Modules = U + B + C,
-    State#state.channel ! {totals, {Modules, C, B, T, 0, 0}}.
+totals (Modules) ->
+    {totals, fold (fun totals/3, {0,0,0,0,0,0}, Modules)}.
+
+totals (_, new, {M, C, E, T, P, F}) ->
+    {M+1, C, E, T, P, F};
+totals (_, changed, {M, C, E, T, P, F}) ->
+    {M+1, C, E, T, P, F};
+totals (_, error, {M, C, E, T, P, F}) ->
+    {M+1, C, E+1, T, P, F};
+totals (_, {ok, _, _, Ts}, {M, C, E, T, P, F}) ->
+    {M+1, C+1, E, T + length(Ts), P, F}.
