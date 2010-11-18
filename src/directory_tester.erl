@@ -5,7 +5,6 @@
 -module (directory_tester).
 -export ([init/1, init/2, init/3]).
 -export ([run_once/1, run_once/2, run_once/3]).
--export ([slave_node/1]).
 -export ([read_args/1]).
 
 run_once (Args) ->
@@ -33,11 +32,11 @@ init (Directories, Node, Options) ->
     loop (start (Directories, Node, Options)).
 
 slave (undefined) ->
-    {Host, Name} = slave_node (node ()),
+    {Host, Name} = integrator: slave_node (node ()),
     {ok, Slave} = slave: start_link (Host, Name),
     Slave;
 slave (Args) when is_list (Args) ->
-    {Host, Name} = slave_node (node ()),
+    {Host, Name} = integrator: slave_node (node ()),
     {ok, Slave} = slave: start_link (Host, Name, Args),
     Slave.
 
@@ -49,17 +48,6 @@ start (Directories, Node, Options) ->
     Compiler ! check,
     Printer = spawn_link (text_printer, init, [standard_io]),
     {Compiler, Tester, Printer}.
-
-
-slave_node (nonode@nohost) ->
-    not_alive;
-slave_node (Node) ->
-    Node_string = atom_to_list (Node),
-    [Name, Host_string] = string: tokens (Node_string, "@"),
-    Slave_name_string = Name ++ "_extremeforge_slave",
-    Slave_name = list_to_atom (Slave_name_string),
-    Host = list_to_atom (Host_string),
-    {Host, Slave_name}.
 
 read_args (Args) when length (Args) == 1 ->
     [Dirs] = read_path_args (Args),

@@ -1,15 +1,6 @@
 -module (directory_tester_test).
 -test (exports).
--export ([slave_node/0]).
--export ([slave_node_nonode/0]).
 -export ([read_args/0]).
-
-slave_node () ->
-    Result = directory_tester: slave_node (mynode@myhost),
-    {myhost, mynode_extremeforge_slave} = Result.
-
-slave_node_nonode () ->
-    not_alive = directory_tester: slave_node (nonode@nohost).
 
 read_args () ->
     Tree = [{directory, "toto", []},

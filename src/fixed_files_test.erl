@@ -19,7 +19,13 @@ tree () ->
        "-test (exports).",
        "-export ([test1/0, test2/0]).",
        "test1 () -> ok.",
-       "test2 () -> ok."]}].
+       "test2 () -> ok."]},
+     {file, "tests_other.erl",
+      ["-module (tests_other).",
+       "-test (exports).",
+       "-export ([passes/0, fails/0]).",
+       "passes () -> ok = compiles: ok ().",
+       "fails () -> nok = warnings: ok ()."]}].
 
 run () ->
     ok = fixtures: use_tree (tree (), fun run/2).
