@@ -8,6 +8,7 @@
 -export ([modified_files_are_recompiled/0]).
 -export ([slave_node/0]).
 -export ([slave_node_nonode/0]).
+-export ([with_directories/2]).
 
 start_stop () ->
     Args = [self ()],
@@ -24,6 +25,9 @@ with_files (Root, Fs) ->
     ok = when_all_compile_tests_are_run_in_separate_node (Root, Fs),
     ok = removed_modules_are_unloaded_and_tests_not_run (Root, Fs),
     ok.
+
+with_directories (Root, Tree) ->
+    ok = source_can_include_from_various_places (Root, Tree).
 
 new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     Files = lists: sublist (Fs, 4),
@@ -147,7 +151,38 @@ check_tests ({C, C, 0, Total, Pass, Fail}, Expected_to_pass) ->
     {totals, Totals} = receive_one (),
     {Expected_totals, Expected_totals} = {Expected_totals, Totals},
     check_tests (Totals, Expected_to_pass).
-    
+
+source_can_include_from_various_places (Root, _) ->
+    Project = filename: join (Root, "project"),
+    Third = filename: join (Root, "3rdparty"),
+    Include = filename: join ([Project, "app1", "include", "inc.hrl"]),
+    Source1 = filename: join ([Project, "app1", "src", "my1.erl"]),
+    Source2 = filename: join ([Project, "app2", "src", "my2.erl"]),
+    Tests = filename: join ([Project, "tests", "tests.erl"]),
+    Options = [{includes, [Third]}],
+    Integrator = spawn_link (integrator, init, [self(), [Project], Options]),
+    {totals, {0,0,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".hrl"}, Include, found},
+    {totals, {0,0,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Source1, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my1, ok, []}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Source2, found},
+    {totals, {2,1,0,0,0,0}} = receive_one (),
+    {compile, {my2, ok, []}} = receive_one (),
+    {totals, {2,2,0,0,0,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Tests, found},
+    {totals, {3,2,0,0,0,0}} = receive_one (),
+    {compile, {tests, ok, []}} = receive_one (),
+    {totals, {3,3,0,6,0,0}=Totals} = receive_one (),
+    Ts = [mydef1, mydef2, def1, def2, appdef, third],
+    Expected_to_pass = [{tests, T} || T <- Ts],
+    check_tests (Totals, Expected_to_pass),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
 

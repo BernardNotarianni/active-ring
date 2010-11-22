@@ -1,14 +1,29 @@
 -module (integrator).
--export ([init/1]).
+-export ([init/1, init/3]).
 -export ([slave_node/1]).
 -import (dict, [new/0, store/3, fetch/2, fold/3, erase/2]).
--record (state, {mux, slave, modules}).
+-record (state, {mux, includes, slave, modules}).
 
 init (Mux) ->
+    init (Mux, [], []).
+
+init (Mux, Roots, Options) ->
     process_flag (trap_exit, true),
     Modules = new (),
     Mux ! totals (Modules),
-    idle (#state {mux = Mux, slave = slave (), modules = Modules}).
+    State = #state {mux = Mux,
+		    includes = Roots,
+		    slave = slave (),
+		    modules = Modules},
+    idle (options (Options, State)).
+
+options ([{includes, Path} | Options], State) ->
+    Includes = State#state.includes ++ Path,
+    options (Options, State#state {includes = Includes});
+options ([_, Options], State) ->
+    options (Options, State);
+options ([], State) ->
+    State.
 
 idle (State) ->
     receive_messages (State, infinity, fun idle/1).
@@ -26,6 +41,9 @@ receive_messages (State, Timeout, Continuation) ->
 	    compiling (F, State#state{modules = Modules});
 	{{file, ".erl"}, F, lost} ->
 	    removing (F, State);
+	{{file, _}, _, _} ->
+	    State#state.mux ! totals (State#state.modules),
+	    Continuation (State);
 	{'EXIT', _, normal} ->
 	    Continuation (State);
 	{'EXIT', _, Reason} ->
@@ -51,9 +69,12 @@ removing (F, State) ->
     testing (State_with_cleared_tests).
     
 compiling (F, State) ->
-    #state{mux=Mux, modules=Modules} = State,
+    #state {mux=Mux, modules=Modules} = State,
     Mux ! totals (Modules),
-    State_with_compilation = store_compilation (modules: compile2 (F), State),
+    All_includes = [modules: 'OTP_include_dir' (F)  | State#state.includes],
+    Options = [{i, P} || P <- All_includes],
+    Compilation = modules: compile2 (F, Options),
+    State_with_compilation = store_compilation (Compilation, State),
     State_with_cleared_tests = clear_tests (State_with_compilation),
     Mux ! totals (State_with_cleared_tests#state.modules),
     testing (State_with_cleared_tests).

@@ -10,10 +10,14 @@
 -export ([module_name/1]).
 -export ([locate/2]).
 -export ([includes/1]).
--export ([compile2/1]).
+-export ([compile2/1, compile2/2]).
+-export (['OTP_include_dir'/1]).
 
 compile2 (File_name) ->
-    case compile (File_name, []) of
+    compile2 (File_name, []).
+    
+compile2 (File_name, Options) ->
+    case compile (File_name, Options) of
 	{ok, Module, Binary, Warnings} ->
 	    {File_name, Module, Tests} = tests: filter_by_attribute (Binary),
 	    {File_name, Module, ok, {Binary, Tests, Warnings}};
@@ -73,3 +77,8 @@ includes_from_forms ({ok, Forms}) ->
     Attributes = [A || {tree, attribute, _, A} <- Forms],
     Includes = [I || {attribute, {atom, _, include}, [I]} <- Attributes],
     [F || {string, _, F} <- Includes].
+
+'OTP_include_dir' (File) ->
+    Local = filename: dirname (File),
+    Top = filename: dirname (Local),
+    filename: join (Top, "include").

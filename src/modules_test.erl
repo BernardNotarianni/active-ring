@@ -6,11 +6,13 @@
 -test (module_name).
 -test (locate).
 -test (includes).
+-test ('OTP_include_dir').
 -export ([module_name/0]).
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
 -export ([with_files/2]).
+-export (['OTP_include_dir'/0]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -78,3 +80,7 @@ with_files (Root, Fs) ->
     [test2, test1] = Tests,
     ok.
     
+'OTP_include_dir' () ->
+    File = filename: join (["app", "src", "foo.erl"]),
+    Include = filename: join ("app", "include"),
+    Include = modules: 'OTP_include_dir' (File).
