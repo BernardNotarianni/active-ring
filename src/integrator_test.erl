@@ -22,7 +22,7 @@ start_stop () ->
 with_files (Root, Fs) ->
     ok = new_files_are_compiled_and_scanned_for_tests (Root, Fs),
     ok = when_all_compile_tests_are_run_in_separate_node (Root, Fs),
-    ok = removed_modules_are_unloaded (Root, Fs),
+    ok = removed_modules_are_unloaded_and_tests_not_run (Root, Fs),
     ok.
 
 new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
@@ -102,7 +102,7 @@ when_all_compile_tests_are_run_in_separate_node (Root, Fs) ->
     stopped = receive_one (),
     ok.
 
-removed_modules_are_unloaded (Root, Fs) ->
+removed_modules_are_unloaded_and_tests_not_run (Root, Fs) ->
     Files = lists: sublist (Fs, 5),
     Ps = [filename: join (Root, F) || {file, F, _} <- Files],
     [Compiles, _, _, Has_tests, Tests_other] = Ps,
@@ -113,10 +113,14 @@ removed_modules_are_unloaded (Root, Fs) ->
       [Compiles, Has_tests, Tests_other]),
     ok = receive_until_found ({totals, {3, 3, 0, 4, 3, 1}}),
     Integrator ! {{file, ".erl"}, Compiles, lost},
-    {totals, Totals} = receive_one (),
-    {2, 2, 0, 4, 0, 0} = Totals,
+    {totals, Totals_with_module_removed} = receive_one (),
+    {2, 2, 0, 4, 0, 0} = Totals_with_module_removed,
     Expected_to_pass = [{good_test, test1}, {good_test, test2}],
-    ok = check_tests (Totals, Expected_to_pass),
+    ok = check_tests (Totals_with_module_removed, Expected_to_pass),
+    Integrator ! {{file, ".erl"}, Tests_other, lost},
+    {totals, Totals_with_test_removed} = receive_one (),
+    {1, 1, 0, 2, 0, 0} = Totals_with_test_removed,
+    ok = check_tests (Totals_with_test_removed, Expected_to_pass),
     Integrator ! stop,
     stopped = receive_one (),
     ok.
