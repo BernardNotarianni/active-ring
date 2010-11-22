@@ -1,7 +1,7 @@
 -module (integrator).
 -export ([init/1]).
 -export ([slave_node/1]).
--import (dict, [new/0, store/3, fetch/2, fold/3]).
+-import (dict, [new/0, store/3, fetch/2, fold/3, erase/2]).
 -record (state, {mux, slave, modules}).
 
 init (Mux) ->
@@ -24,6 +24,8 @@ receive_messages (State, Timeout, Continuation) ->
 	{{file, ".erl"}, F, changed} ->
 	    Modules = store (F, changed, State#state.modules),
 	    compiling (F, State#state{modules = Modules});
+	{{file, ".erl"}, F, lost} ->
+	    removing (F, State);
 	{'EXIT', _, normal} ->
 	    Continuation (State);
 	{'EXIT', _, Reason} ->
@@ -35,6 +37,19 @@ receive_messages (State, Timeout, Continuation) ->
 	    Continuation (State)
     end.
 
+removing (F, State) ->
+    case fetch (F, State#state.modules) of
+	{ok, M, _, _} ->
+	    rpc: call (State#state.slave, code, purge, [M]),
+	    rpc: call (State#state.slave, code, delete, [M]),
+	    false = rpc: call (State#state.slave, code, is_loaded, [M]);
+	_ -> ignore
+    end,
+    Modules = erase (F, State#state.modules),
+    State_with_cleared_tests = clear_tests (State#state {modules = Modules}),
+    State#state.mux ! totals (State_with_cleared_tests#state.modules),
+    testing (State_with_cleared_tests).
+    
 compiling (F, State) ->
     #state{mux=Mux, modules=Modules} = State,
     Mux ! totals (Modules),
