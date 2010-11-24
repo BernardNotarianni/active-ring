@@ -13,7 +13,6 @@
 start_stop () ->
     Args = [self ()],
     Integrator = spawn_link (integrator, init, Args),
-    {totals, {0,0,0,0,0,0}}= receive_one (),
     true = is_process_alive (Integrator),
     Integrator ! stop,
     stopped = receive_one (),
@@ -34,7 +33,6 @@ new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     Ps = [filename: join (Root, F) || {file, F, _} <- Files],
     [Compiles, Doesnt, Warnings, Has_tests] = Ps,
     Integrator = spawn_link (integrator, init, [self ()]),
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     Integrator ! {{file, ".erl"}, Compiles, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {compiles, ok, []}} = receive_one (),
@@ -62,7 +60,6 @@ modified_files_are_recompiled () ->
 modified_files_are_recompiled (Root, [{file, F, _}]) ->
     Filename = filename: join (Root, F),
     Integrator = spawn_link (integrator, init, [self()]),
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     Integrator ! {{file, ".erl"}, Filename, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {foo, error, _}} = receive_one (),
@@ -82,7 +79,6 @@ when_all_compile_tests_are_run_in_separate_node (Root, Fs) ->
     Ps = [filename: join (Root, F) || {file, F, _} <- Files],
     [Compiles, _, Warnings, Has_tests, Tests_other] = Ps,
     Integrator = spawn_link (integrator, init, [self()]),
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     lists: foreach (
       fun (F) -> Integrator ! {{file, ".erl"}, F, found} end,
       [Compiles, Warnings, Has_tests, Tests_other]),
@@ -111,7 +107,6 @@ removed_modules_are_unloaded_and_tests_not_run (Root, Fs) ->
     Ps = [filename: join (Root, F) || {file, F, _} <- Files],
     [Compiles, _, _, Has_tests, Tests_other] = Ps,
     Integrator = spawn_link (integrator, init, [self()]),
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     lists: foreach (
       fun (F) -> Integrator ! {{file, ".erl"}, F, found} end,
       [Compiles, Has_tests, Tests_other]),
@@ -161,9 +156,7 @@ source_can_include_from_various_places (Root, _) ->
     Tests = filename: join ([Project, "tests", "tests.erl"]),
     Options = [{includes, [Third]}],
     Integrator = spawn_link (integrator, init, [self(), [Project], Options]),
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     Integrator ! {{file, ".hrl"}, Include, found},
-    {totals, {0,0,0,0,0,0}} = receive_one (),
     Integrator ! {{file, ".erl"}, Source1, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {my1, ok, []}} = receive_one (),
