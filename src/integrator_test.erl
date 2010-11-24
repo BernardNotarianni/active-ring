@@ -3,12 +3,16 @@
 -test (modified_files_are_recompiled).
 -test (slave_node).
 -test (slave_node_nonode).
+-test (consul_forms).
 -export ([with_files/2]).
 -export ([start_stop/0]).
 -export ([modified_files_are_recompiled/0]).
 -export ([slave_node/0]).
 -export ([slave_node_nonode/0]).
 -export ([with_directories/2]).
+-export ([consul_forms/0]).
+-export ([consul_forms_test1/0]).
+-export ([consul_forms_test2/0]).
 
 start_stop () ->
     Args = [self ()],
@@ -193,3 +197,24 @@ slave_node () ->
 slave_node_nonode () ->
     not_alive = integrator: slave_node (nonode@nohost).
 
+consul_forms_test1 () ->
+    ok.
+
+consul_forms_test2 () ->
+    yohoho: and_a_bottle_of_rhum ().
+
+consul_forms () ->
+    Binary = modules: forms_to_binary (integrator: consul_forms (myconsul)),
+    {module, myconsul} = code: load_binary (myconsul, "myconsul.beam", Binary),
+    try
+	Result1 = {test, ?MODULE, consul_forms_test1, pass},
+	Result1 = myconsul: test (?MODULE, consul_forms_test1, self ()),
+	Result1 = receive_one (),
+	Result2 = myconsul: test (?MODULE, consul_forms_test2, self ()),
+	{test, ?MODULE, consul_forms_test2, {error, _}} = Result2,
+	Result2 = receive_one ()
+    after
+	code: purge (myconsul),
+      code: delete (myconsul)
+    end,
+    ok.

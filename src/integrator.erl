@@ -1,6 +1,7 @@
 -module (integrator).
 -export ([init/1, init/3]).
 -export ([slave_node/1]).
+-export ([consul_forms/1]).
 -import (dict, [new/0, store/3, fetch/2, fold/3, erase/2]).
 -record (state, {mux, includes, slave, modules}).
 
@@ -8,7 +9,7 @@ init (Mux) ->
     init (Mux, [], []).
 
 init (Mux, Dirs, Options) ->
-    process_flag (trap_exit, true),
+%    process_flag (trap_exit, true),
     S = #state {mux = Mux, includes = Dirs, slave = slave (), modules = new ()},
     State = options (Options, S),
     idle (State).
@@ -39,10 +40,6 @@ receive_messages (State, Timeout, Continuation) ->
 	    removing (F, State);
 	{{file, _}, _, _} ->
 	    Continuation (State);
-	{'EXIT', _, normal} ->
-	    Continuation (State);
-	{'EXIT', _, Reason} ->
-	    exit (Reason);
 	Other ->
 	    State#state.mux ! {unexpected, Other},
 	    Continuation (State)
@@ -77,6 +74,9 @@ compiling (F, State) ->
 slave () ->
     {Host, Name} = integrator: slave_node (node ()),
     {ok, Slave} = slave: start_link (Host, Name),
+    Binary = modules: forms_to_binary (consul_forms (consul)),
+    Load_args = [consul, "consul.beam", Binary],
+    {module, consul} = rpc: call (Slave, code, load_binary, Load_args),
     Slave.
 
 testing (State) ->
@@ -101,13 +101,13 @@ testing (File, {ok, _, _, Tests}, State) ->
 test (File, F, State) ->
     #state {slave = Slave, mux = Mux, modules = Modules} = State,
     {ok, M, Binary, Tests} = fetch (File, Modules),
-    Pid = spawn_link (Slave, M, F, []),
+    spawn_link (Slave, consul, test, [M, F, self ()]),
     Result =
 	receive
-	    {'EXIT', Pid, normal} ->
+	    {test, M, F, pass} ->
 		Mux ! {test, {M, F, 0, pass}},
 		pass;
-	    {'EXIT', Pid, {Error, Stack_trace}} ->
+	    {test, M, F, {error, {Error, Stack_trace}}} ->
 		{File, Line} = modules: locate ({M, F, 0}, Binary),
 		Location = {M, F, 0, File, Line},
 		List = [{error, Error},
@@ -180,3 +180,43 @@ slave_node (Node) ->
     Host = list_to_atom (Host_string),
     {Host, Slave_name}.
 
+consul_forms (Module) ->
+%% Abstract forms for following code:
+%%
+%% -module (Module).
+%% -export ([test/3]).
+%% test (M, F, Pid) ->
+%%    case catch (M: F()) of
+%%       {'EXIT', Error} ->
+%%          Pid ! {test, M, F, {error, Error}};
+%%       _ ->
+%%          Pid ! {test, M, F, pass}
+%%    end.
+    [{attribute,1,module,Module},
+     {attribute,2,export,[{test,3}]},
+     {function,4,test,3,
+      [{clause,4,
+	[{var,4,'M'},{var,4,'F'},{var,4,'Pid'}],
+	[],
+	[{'case',5,
+	  {'catch',5,{call,5,{remote,5,{var,5,'M'},{var,5,'F'}},[]}},
+	  [{clause,6,
+	    [{tuple,6,[{atom,6,'EXIT'},{var,6,'Error'}]}],
+	    [],
+	    [{op,7,'!',
+	      {var,7,'Pid'},
+	      {tuple,7,
+	       [{atom,7,test},
+		{var,7,'M'},
+		{var,7,'F'},
+		{tuple,7,[{atom,7,error},{var,7,'Error'}]}]}}]},
+	   {clause,8,
+	    [{var,8,'_'}],
+	    [],
+	    [{op,9,'!',
+	      {var,9,'Pid'},
+	      {tuple,9,
+	       [{atom,9,test},
+		{var,9,'M'},
+		{var,9,'F'},
+		{atom,9,pass}]}}]}]}]}]}].
