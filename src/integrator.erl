@@ -9,7 +9,6 @@ init (Mux) ->
     init (Mux, [], []).
 
 init (Mux, Dirs, Options) ->
-%    process_flag (trap_exit, true),
     S = #state {mux = Mux, includes = Dirs, slave = slave (), modules = new ()},
     State = options (Options, S),
     idle (State).
