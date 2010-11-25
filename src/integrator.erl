@@ -13,6 +13,14 @@ init (Mux, Dirs, Options) ->
     State = options (Options, S),
     idle (State).
 
+slave () ->
+    {Host, Name} = integrator: slave_node (node ()),
+    {ok, Slave} = slave: start_link (Host, Name),
+    Binary = modules: forms_to_binary (consul_forms (consul)),
+    Load_args = [consul, "consul.beam", Binary],
+    {module, consul} = rpc: call (Slave, code, load_binary, Load_args),
+    Slave.
+
 options ([{includes, Path} | Options], State) ->
     Includes = State#state.includes ++ Path,
     options (Options, State#state {includes = Includes});
@@ -29,16 +37,17 @@ receive_messages (State, Timeout, Continuation) ->
 	stop ->
 	    slave: stop (State#state.slave),
 	    State#state.mux ! stopped;
-	{{file, ".erl"}, F, found} ->
-	    Modules = store (F, new, State#state.modules),
-	    compiling (F, State#state{modules = Modules});
-	{{file, ".erl"}, F, changed} ->
-	    Modules = store (F, changed, State#state.modules),
-	    compiling (F, State#state{modules = Modules});
 	{{file, ".erl"}, F, lost} ->
 	    removing (F, State);
+	{{file, ".erl"}, F, _} ->
+	    Modules = store (F, uncompiled, State#state.modules),
+	    compiling (F, State#state{modules = Modules});
 	{{file, _}, _, _} ->
 	    Continuation (State);
+	{compile, Compilation} ->
+	    Compiled = store_compilation (Compilation, State),
+	    State#state.mux ! totals (Compiled#state.modules),
+	    Continuation (Compiled);
 	Other ->
 	    State#state.mux ! {unexpected, Other},
 	    Continuation (State)
@@ -46,37 +55,35 @@ receive_messages (State, Timeout, Continuation) ->
 	    Continuation (State)
     end.
 
-removing (F, State) ->
-    case fetch (F, State#state.modules) of
-	{ok, M, _, _} ->
-	    rpc: call (State#state.slave, code, purge, [M]),
-	    rpc: call (State#state.slave, code, delete, [M]),
-	    false = rpc: call (State#state.slave, code, is_loaded, [M]);
-	_ -> ignore
-    end,
-    Modules = erase (F, State#state.modules),
-    State_with_cleared_tests = clear_tests (State#state {modules = Modules}),
-    State#state.mux ! totals (State_with_cleared_tests#state.modules),
-    testing (State_with_cleared_tests).
-    
 compiling (F, State) ->
     Cleared = clear_tests (State),
     #state {mux=Mux, modules=Modules} = Cleared,
     Mux ! totals (Modules),
-    All_includes = [modules: 'OTP_include_dir' (F)  | Cleared#state.includes],
+    Self = self (),
+    spawn_link (fun () -> compile (Self, F, Cleared#state.includes) end),
+
+%%     All_includes = [modules: 'OTP_include_dir' (F)  | Cleared#state.includes],
+%%     Options = [{i, P} || P <- All_includes],
+%%     Compilation = modules: compile2 (F, Options),
+    testing (Cleared).
+
+compile (Pid, F, Includes) ->
+    All_includes = [modules: 'OTP_include_dir' (F)  | Includes],
     Options = [{i, P} || P <- All_includes],
     Compilation = modules: compile2 (F, Options),
-    Compiled = store_compilation (Compilation, Cleared),
-    Mux ! totals (Compiled#state.modules),
-    testing (Compiled).
-
-slave () ->
-    {Host, Name} = integrator: slave_node (node ()),
-    {ok, Slave} = slave: start_link (Host, Name),
-    Binary = modules: forms_to_binary (consul_forms (consul)),
-    Load_args = [consul, "consul.beam", Binary],
-    {module, consul} = rpc: call (Slave, code, load_binary, Load_args),
-    Slave.
+    Pid ! {compile, Compilation}.
+    
+store_compilation ({File, Module, error, Errors}, State) ->
+    #state {mux = Mux, modules = Modules} = State,
+    Mux ! {compile, {Module, error, Errors}},
+    State#state {modules = store (File, error, Modules)};
+store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, State) ->
+    #state {mux = Mux, slave = Slave, modules = Modules} = State,
+    Mux ! {compile, {Module, ok, Ws}},
+    Load_args = [Module, File, Binary],
+    {module, Module} = rpc: call (Slave, code, load_binary, Load_args),
+    Tests = dict: from_list ([{T, not_run} || T <- Ts]),
+    State#state {modules = store (File, {ok, Module, Binary, Tests}, Modules)}.
 
 testing (State) ->
     receive_messages (State, 0, fun real_testing/1).
@@ -89,7 +96,7 @@ test_if_necessary ({M, C, _, T, P, F}, State) when M == C andalso T > P+F ->
     Next = fold (fun testing/3, State, State#state.modules),
     idle (Next);
 test_if_necessary (_ ,State) ->
-    idle (State).
+    testing (State).
 
 testing (_, {ok, _, _, []}, State) ->
     State;
@@ -122,6 +129,19 @@ test (File, F, State) ->
     Mux ! totals (Ms),
     State#state {modules = Ms}.
 
+removing (F, State) ->
+    case fetch (F, State#state.modules) of
+	{ok, M, _, _} ->
+	    rpc: call (State#state.slave, code, purge, [M]),
+	    rpc: call (State#state.slave, code, delete, [M]),
+	    false = rpc: call (State#state.slave, code, is_loaded, [M]);
+	_ -> ignore
+    end,
+    Erased = erase (F, State#state.modules),
+    Cleared = clear_tests (State#state {modules = Erased}),
+    State#state.mux ! totals (Cleared#state.modules),
+    testing (Cleared).
+    
 clear_tests (State) ->
     fold (fun clear_modules/3, State, State#state.modules).
 
@@ -136,25 +156,11 @@ clear_modules (_, _, State) ->
 clear_tests (F, _, Acc) ->
     store (F, not_run, Acc).
 
-store_compilation ({File, Module, error, Errors}, State) ->
-    #state {mux = Mux, modules = Modules} = State,
-    Mux ! {compile, {Module, error, Errors}},
-    State#state {modules = store (File, error, Modules)};
-store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, State) ->
-    #state {mux = Mux, slave = Slave, modules = Modules} = State,
-    Mux ! {compile, {Module, ok, Ws}},
-    Load_args = [Module, File, Binary],
-    {module, Module} = rpc: call (Slave, code, load_binary, Load_args),
-    Tests = dict: from_list ([{T, not_run} || T <- Ts]),
-    State#state {modules = store (File, {ok, Module, Binary, Tests}, Modules)}.
-
 totals (Modules) ->
     Totals = fold (fun totals/3, {0,0,0,0,0,0}, Modules),
     {totals, Totals}.
 
-totals (_, new, {M, C, E, T, P, F}) ->
-    {M+1, C, E, T, P, F};
-totals (_, changed, {M, C, E, T, P, F}) ->
+totals (_, uncompiled, {M, C, E, T, P, F}) ->
     {M+1, C, E, T, P, F};
 totals (_, error, {M, C, E, T, P, F}) ->
     {M+1, C, E+1, T, P, F};

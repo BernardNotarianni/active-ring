@@ -27,6 +27,7 @@ with_files (Root, Fs) ->
     ok = new_files_are_compiled_and_scanned_for_tests (Root, Fs),
     ok = when_all_compile_tests_are_run_in_separate_node (Root, Fs),
     ok = removed_modules_are_unloaded_and_tests_not_run (Root, Fs),
+    ok = new_files_are_counted_before_compile_results_are_reported (Root, Fs),
     ok.
 
 with_directories (Root, Tree) ->
@@ -87,14 +88,14 @@ when_all_compile_tests_are_run_in_separate_node (Root, Fs) ->
       fun (F) -> Integrator ! {{file, ".erl"}, F, found} end,
       [Compiles, Warnings, Has_tests, Tests_other]),
     {totals, {1,0,0,0,0,0}} = receive_one (),
+    {totals, {2,0,0,0,0,0}} = receive_one (),
+    {totals, {3,0,0,0,0,0}} = receive_one (),
+    {totals, {4,0,0,0,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {1,1,0,0,0,0}} = receive_one (),
-    {totals, {2,1,0,0,0,0}} = receive_one (),
+    {totals, {4,1,0,0,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {2,2,0,0,0,0}} = receive_one (),
-    {totals, {3,2,0,0,0,0}} = receive_one (),
+    {totals, {4,2,0,0,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {3,3,0,2,0,0}} = receive_one (),
     {totals, {4,3,0,2,0,0}} = receive_one (),
     {compile, _} = receive_one (),
     {totals, Totals} = receive_one (),
@@ -128,6 +129,26 @@ removed_modules_are_unloaded_and_tests_not_run (Root, Fs) ->
     stopped = receive_one (),
     ok.
 
+new_files_are_counted_before_compile_results_are_reported (Root, Fs) ->
+    Files = lists: sublist (Fs, 4),
+    Ps = [filename: join (Root, F) || {file, F, _} <- Files],
+    [Compiles, _, Warnings, Has_tests] = Ps,
+    Integrator = spawn_link (integrator, init, [self()]),
+    lists: foreach (
+      fun (F) -> Integrator ! {{file, ".erl"}, F, found} end,
+      [Compiles, Warnings, Has_tests]),
+    {1,0,0,0,0,0} = receive_totals (),
+    {2,0,0,0,0,0} = receive_totals (),
+    {3,0,0,0,0,0} = receive_totals (),
+    {3,1,0,0,0,0} = receive_totals (),
+    {3,2,0,0,0,0} = receive_totals (),
+    {3,3,0,2,0,0} = receive_totals (),
+    {3,3,0,2,1,0} = receive_totals (),
+    {3,3,0,2,2,0} = receive_totals (),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+    
 check_tests ({C, C, 0, Total, Pass, Fail}, _) when Total == Pass + Fail ->
     ok;
 check_tests ({C, C, 0, Total, Pass, Fail}, Expected_to_pass) ->
@@ -183,6 +204,11 @@ source_can_include_from_various_places (Root, _) ->
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
 
+receive_totals () ->
+    receive {totals, Totals} -> Totals;
+	    _ -> receive_totals ()
+    after 3000 -> timeout end.
+	     
 receive_until_found (M) ->
     receive M -> ok;
 	    _ -> receive_until_found (M)
