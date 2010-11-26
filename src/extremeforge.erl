@@ -1,3 +1,7 @@
+%%% Copyright (C) Dominic Williams
+%%% All rights reserved.
+%%% See file COPYING.
+
 -module (extremeforge).
 -export ([start/1]).
 -export ([start/0]).

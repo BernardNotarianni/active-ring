@@ -1,3 +1,7 @@
+%%% Copyright (C) Dominic Williams
+%%% All rights reserved.
+%%% See file COPYING.
+
 -module (fixed_files_test).
 -test (exports).
 -export ([flat_files_run/0]).

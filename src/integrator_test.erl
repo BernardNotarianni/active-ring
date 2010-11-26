@@ -1,3 +1,7 @@
+%%% Copyright (C) Dominic Williams
+%%% All rights reserved.
+%%% See file COPYING.
+
 -module (integrator_test).
 -test (start_stop).
 -test (modified_files_are_recompiled).

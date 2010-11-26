@@ -1,3 +1,7 @@
+%%% Copyright (C) Dominic Williams
+%%% All rights reserved.
+%%% See file COPYING.
+
 -module (integrator).
 -export ([init/1, init/3]).
 -export ([slave_node/1]).
