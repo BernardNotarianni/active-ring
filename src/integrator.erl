@@ -30,42 +30,58 @@ options ([], State) ->
     State.
 
 idle (State) ->
-    receive_messages (State, infinity, fun idle/1).
+    receive_external (State, infinity, fun idle/1).
 
-receive_messages (State, Timeout, Continuation) ->
+receive_external (State, Timeout, Continue) ->
     receive
 	stop ->
 	    slave: stop (State#state.slave),
 	    State#state.mux ! stopped;
 	{{file, ".erl"}, F, lost} ->
-	    removing (F, State);
+	    Next = remove (F, State),
+	    pending (Next);
 	{{file, ".erl"}, F, _} ->
 	    Modules = store (F, uncompiled, State#state.modules),
-	    compiling (F, State#state{modules = Modules});
+	    Next = compile (F, State#state{modules = Modules}),
+	    pending (Next);
 	{{file, _}, _, _} ->
-	    Continuation (State);
-	{compile, Compilation} ->
-	    Compiled = store_compilation (Compilation, State),
-	    State#state.mux ! totals (Compiled#state.modules),
-	    Continuation (Compiled);
-	Other ->
-	    State#state.mux ! {unexpected, Other},
-	    Continuation (State)
+	    receive_external (State, Timeout, Continue)
     after (Timeout) ->
-	    Continuation (State)
+	    Continue (State)
     end.
 
-compiling (F, State) ->
+pending (State) ->
+    receive_external (State, 0, fun receive_internal/1).
+
+receive_internal (State) ->
+    receive
+	{compile, Compilation} ->
+	    Next = store_compilation (Compilation, State),
+	    Next#state.mux ! totals (Next#state.modules),
+	    pending (Next)
+    after 0 ->
+	    testing (State)
+    end.
+
+testing (State) ->
+    {totals, Totals} = totals (State#state.modules),
+    test_if_necessary (Totals, State).
+
+test_if_necessary ({M, C, _, T, P, F}, State) when M == C andalso T > P+F ->
+    Next = fold (fun test_module/3, State, State#state.modules),
+    idle (Next);
+test_if_necessary ({M, C, E, _, _, _}, State) when M == C + E ->
+    idle (State);
+test_if_necessary (_, State) ->
+    pending (State).
+
+compile (F, State) ->
     Cleared = clear_tests (State),
     #state {mux=Mux, modules=Modules} = Cleared,
     Mux ! totals (Modules),
     Self = self (),
     spawn_link (fun () -> compile (Self, F, Cleared#state.includes) end),
-
-%%     All_includes = [modules: 'OTP_include_dir' (F)  | Cleared#state.includes],
-%%     Options = [{i, P} || P <- All_includes],
-%%     Compilation = modules: compile2 (F, Options),
-    testing (Cleared).
+    Cleared.
 
 compile (Pid, F, Includes) ->
     All_includes = [modules: 'OTP_include_dir' (F)  | Includes],
@@ -85,22 +101,9 @@ store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, State) ->
     Tests = dict: from_list ([{T, not_run} || T <- Ts]),
     State#state {modules = store (File, {ok, Module, Binary, Tests}, Modules)}.
 
-testing (State) ->
-    receive_messages (State, 0, fun real_testing/1).
-
-real_testing (State) ->
-    {totals, Ts} = totals (State#state.modules),
-    test_if_necessary (Ts, State).
-
-test_if_necessary ({M, C, _, T, P, F}, State) when M == C andalso T > P+F ->
-    Next = fold (fun testing/3, State, State#state.modules),
-    idle (Next);
-test_if_necessary (_ ,State) ->
-    testing (State).
-
-testing (_, {ok, _, _, []}, State) ->
+test_module (_, {ok, _, _, []}, State) ->
     State;
-testing (File, {ok, _, _, Tests}, State) ->
+test_module (File, {ok, _, _, Tests}, State) ->
     Test = fun (Test, _, St) -> test (File, Test, St) end,
     fold (Test, State, Tests).
 
@@ -129,7 +132,7 @@ test (File, F, State) ->
     Mux ! totals (Ms),
     State#state {modules = Ms}.
 
-removing (F, State) ->
+remove (F, State) ->
     case fetch (F, State#state.modules) of
 	{ok, M, _, _} ->
 	    rpc: call (State#state.slave, code, purge, [M]),
@@ -140,7 +143,7 @@ removing (F, State) ->
     Erased = erase (F, State#state.modules),
     Cleared = clear_tests (State#state {modules = Erased}),
     State#state.mux ! totals (Cleared#state.modules),
-    testing (Cleared).
+    Cleared.
     
 clear_tests (State) ->
     fold (fun clear_modules/3, State, State#state.modules).
