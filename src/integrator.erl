@@ -86,7 +86,7 @@ compile (F, State) ->
 compile (Pid, F, Includes) ->
     All_includes = [modules: 'OTP_include_dir' (F)  | Includes],
     Options = [{i, P} || P <- All_includes],
-    Compilation = modules: compile2 (F, Options),
+    Compilation = modules: compile (F, Options),
     Pid ! {compile, Compilation}.
     
 store_compilation ({File, Module, error, Errors}, State) ->

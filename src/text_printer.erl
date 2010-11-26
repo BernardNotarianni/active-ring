@@ -10,46 +10,65 @@ init (Device) ->
 
 wait (Device) ->
     receive
-	{_, compiler, {Total, Done, _}} when Total > Done ->
-	    io: put_chars (Device, io_lib: fwrite ("Compiling ~p: ", [Total - Done])),
+	stop ->
+	    bye;
+	{totals, {M, C, E, _, _, _}} when M > C + E ->
+	    io: put_chars (Device, io_lib: fwrite ("Compiling: ", [])),
 	    compiling (Device);
-	{_, tester, {Total, Done, _}} when Total > Done ->
-	    io: put_chars (Device, io_lib: fwrite ("Testing ~p: ", [Total - Done])),
-	    testing (Device);
+	{totals, {M, C, E, T, P, F}} when M == C + E  andalso T > P + F ->
+	    N = T - P - F,
+	    io: put_chars (Device, io_lib: fwrite ("Testing ~p: ", [N])),
+ 	    testing (Device);
 	_ ->
 	    wait (Device)
     end.
 
 compiling (Device) ->
     receive
-	{_, compiler, {Total, Total, Successful}} ->
-	    io: put_chars (Device, [".\n" | end_compile (Successful, Total)]),
-	    wait (Device);
-	{_, compiler, {_, _, _}} ->
+	{compile, {_, ok, []}} ->
 	    io: put_chars (Device, "."),
 	    compiling (Device);
-	{_, compiler, {Errors, Warnings}} ->
-	    io: put_chars (Device, [$\n | [errors (Errors), warnings (Warnings)]]),
+	{compile, {_, ok, Warnings}} ->
+	    io: put_chars (Device, [$\n | warnings (Warnings)]),
+	    compiling (Device);
+	{compile, {_, error, {Errors, Warnings}}} ->
+	    Cs = [$\n | [errors (Errors), warnings (Warnings)]],
+	    io: put_chars (Device, Cs),
+	    compiling (Device);
+	{totals, {M, C, E, T, P, F}} when M == C + E ->
+	    io: put_chars (Device, ["\n" | end_compile (C, M)]),
+	    if
+		E == 0 andalso T > P + F ->
+		    N = T - P - F,
+		    Chars = io_lib: fwrite ("Testing ~p: ", [N]),
+		    io: put_chars (Device, Chars),
+		    testing (Device);
+		true ->
+		    wait (Device)
+	    end;
+	_ ->
 	    compiling (Device)
     end.
 
 testing (Device) ->
     receive
-	{_, tester, {Total, Total, Successful}} ->
-	    io: put_chars (Device, [".\n" | end_tests (Successful, Total)]),
+	{totals, {_, _, _, T, P, F}} when T == P + F ->
+	    io: put_chars (Device, ["\n" | end_tests (P, T)]),
 	    wait (Device);
-	{_, tester, {_, _, _}} ->
+	{test, {_, _, _, pass}} ->
 	    io: put_chars (Device, "."),
 	    testing (Device);
-	{_, tester, Other} ->
-	    Error = dict: fetch (error, Other),
-	    Stack = dict: fetch (stack_trace, Other),
-	    {M, F, A, File, Line} = dict: fetch (location, Other),
+	{test, {_, _, _, {fail, Reason}}} ->
+	    Error = dict: fetch (error, Reason),
+	    Stack = dict: fetch (stack_trace, Reason),
+	    {M, F, A, File, Line} = dict: fetch (location, Reason),
 	    Output = io_lib: fwrite (
 		     "~n~s(~p): failure in {~p, ~p, ~p}~n"
 		     "   Error: ~p~n"
 		     "   Stack: ~p~n", [File, Line, M, F, A, Error, Stack]),
 	    io: put_chars (Device, Output),
+	    testing (Device);
+	_ ->
 	    testing (Device)
     end.
 

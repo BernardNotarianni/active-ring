@@ -69,15 +69,15 @@ includes (Root, _) ->
 
 with_files (Root, Fs) ->
     Ps = [filename: join (Root, F) || {file, F, _} <- lists: sublist (Fs, 4)],
-    [Compiles, Doesnt, Warnings, Has_tests] = Ps,
-    {Compiles, compiles, ok, {Bin1, [], []}} = modules: compile2 (Compiles),
+    [Compiles, Doesnt, Warnings, Tests] = Ps,
+    {Compiles, compiles, ok, {Bin1, [], []}} = modules: compile (Compiles, []),
     {Compiles, 3} = modules: locate ({compiles, ok, 0}, Bin1),
-    {Doesnt, doesnt_compile, error, {_, _}} = modules: compile2 (Doesnt),
-    {Warnings, warnings, ok, {Bin2, [], Ws}} = modules: compile2 (Warnings),
+    {Doesnt, doesnt_compile, error, {_, _}} = modules: compile (Doesnt, []),
+    {Warnings, warnings, ok, {Bin2, [], Ws}} = modules: compile (Warnings, []),
     {Warnings, 4} = modules: locate ({warnings, unused, 0}, Bin2),
     [{Warnings, [{4, erl_lint, {unused_function, _}}]}] = Ws,
-    {Has_tests, good_test, ok, {_, Tests, _}} = modules: compile2 (Has_tests),
-    [test2, test1] = Tests,
+    {Tests, good_test, ok, {_, Ts, _}} = modules: compile (Tests, []),
+    [test2, test1] = Ts,
     ok.
     
 'OTP_include_dir' () ->
