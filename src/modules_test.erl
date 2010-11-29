@@ -6,10 +6,13 @@
 -test (module_name).
 -test (locate).
 -test (includes).
+-test ('OTP_include_dir').
 -export ([module_name/0]).
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
+-export ([with_files/2]).
+-export (['OTP_include_dir'/0]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -63,3 +66,21 @@ includes (Root, _) ->
     With_path = filename: join (Root, "eg_code_include_with_path.erl"),
     ["dir/eg_include_in_dir.xxx"] = modules: includes (With_path),
     ok.
+
+with_files (Root, Fs) ->
+    Ps = [filename: join (Root, F) || {file, F, _} <- lists: sublist (Fs, 4)],
+    [Compiles, Doesnt, Warnings, Tests] = Ps,
+    {Compiles, compiles, ok, {Bin1, [], []}} = modules: compile (Compiles, []),
+    {Compiles, 3} = modules: locate ({compiles, ok, 0}, Bin1),
+    {Doesnt, doesnt_compile, error, {_, _}} = modules: compile (Doesnt, []),
+    {Warnings, warnings, ok, {Bin2, [], Ws}} = modules: compile (Warnings, []),
+    {Warnings, 4} = modules: locate ({warnings, unused, 0}, Bin2),
+    [{Warnings, [{4, erl_lint, {unused_function, _}}]}] = Ws,
+    {Tests, good_test, ok, {_, Ts, _}} = modules: compile (Tests, []),
+    [test2, test1] = Ts,
+    ok.
+    
+'OTP_include_dir' () ->
+    File = filename: join (["app", "src", "foo.erl"]),
+    Include = filename: join ("app", "include"),
+    Include = modules: 'OTP_include_dir' (File).

@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # -*- sh -*-
-
-hostname=`hostname -s`
+set -o nounset
+set -e
 
 cd ebin
+rm -f *.beam
 erl -make
-erl -kernel error_logger "{file,\"../install_errors.log\"}" \
-    -sname extremeforge_installer@$hostname \
+cd ..
+erl -pa ebin \
+    -kernel error_logger "{file,\"../install_errors.log\"}" \
+    -sname extremeforge_installer \
     -noinput \
-    -run directory_tester run_once ".." \
-    -s init stop
+    -run extremeforge run || { echo "Installation failed."; exit 1; }
+echo "Installation successfull."
+

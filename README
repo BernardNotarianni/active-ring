@@ -2,25 +2,15 @@ EXTREME FORGE
 
 http://extremeforge.net
 
-The aims of this software are:
-
-* To provide a complete, self-contained environment fulfilling the
-  needs of extreme programming teams.
-* To provide a complete, self-contained environment fulfilling the
-  needs of Erlang programmers.
-* To explore some of the ideas at the forefront of extreme
-  programming.
-* To facilitate adoption of extreme programming in corporate
-  environments, by automating or simplifying traditional needs such
-  as traceability, tracking, reporting, metrics...
-* To facilitate the use of extreme programming on distributed
-  projects, including open source ones.
+This open source software aims to make it simple to use test-driven
+development with Erlang. Just start Extreme Forge at the root of your
+project and it will compile all Erlang source files and run all the
+tests, continuously, automatically detecting when any files are changed.
 
 Requirements
 -----------
 
-Erlang/OTP R11B4 or above.
-Cf. http://www.erlang.org
+Erlang/OTP R12B-3 or above (http://erlang.org).
 
 Installation
 ------------
@@ -31,9 +21,41 @@ From the shell, run the 'install' script:
 
 % ./install
 
-This should print out some lines, ending with "done".
+This script compiles Extreme Forge source code, then uses it
+to test itself on your platform. It should print out some lines,
+ending with "Installation successful".
+
+The *.beam files needed to run Extreme Forge are now located in
+the ebin directory below where you unpacked the tarball. That
+directory is referred to in the following instructions as
+/path/to/install/ebin.
+
+Usage
+-----
+
+To use Extreme Forge interactively (for continuous compiling and testing
+of your project as you develop):
+
+% cd /path/to/your/project
+% erl -sname extremeforge -pa /path/to/install/ebin
+Erlang (BEAM) emulator version 5.6.3 [source] [smp:2]
+Eshell V5.6.3  (abort with ^G)
+(extremeforge@bill)1> extremeforge:start().
+
+To stop:
+(extremeforge@bill)2> extremeforge:stop().
+
+To use Extreme Forge in a continuous integration tool (from the command
+line, with a single run of compilation and tests, and an exit code):
+% cd /path/to/your/project
+% erl -sname extremeforge -pa /path/to/install/ebin -noinput \
+> -run extremeforge run > extremeforge.log
+
+This provides an exit code of 0 if all modules compiled and all tests
+passed, 1 otherwise.
 
 LEGAL MATTERS
 -------------
 
+This software is licensed under the new (2-clause) BSD licence.
 See the file COPYING located in the src directory.

@@ -1,7 +1,7 @@
 @echo off
 
-start /MIN erl -kernel error_logger "{file,\"tester.log\"}" -sname forgetester@localhost -noinput
 cd ebin
+del *.beam
 erl -make
-erl -kernel error_logger "{file,\"../forge.log\"}" -sname forgeinstaller@localhost -noinput -s shells install forgetester@localhost -s init stop
 cd ..
+erl -pa ebin -kernel error_logger "{file,\"../install_errors.log\"}" -sname extremeforge_installer -noinput -run extremeforge run
