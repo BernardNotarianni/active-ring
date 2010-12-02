@@ -81,6 +81,20 @@ or below the directory of the current buffer. Every time a source file
 is saved, modifications will be recompiled and tests re-run.
 Compilation-mode commands may be used to navigate directly to errors.
 
+Writing tests
+-------------
+
+Test functions can be in any module and must have have arity 0.
+
+Add a -test(exports). attribute to designate all exported functions
+of a module to be tests.
+
+Add a -test(myfunction). attribute to designate a specific function
+as a test.
+
+Test functions that do not crash are considered to pass. See
+src/*_test.erl for examples.
+
 Note
 ----
 
