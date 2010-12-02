@@ -8,7 +8,7 @@ project and it will compile all Erlang source files and run all the
 tests, continuously, automatically detecting when any files are changed.
 
 Requirements
------------
+------------
 
 Erlang/OTP R12B-3 or above (http://erlang.org).
 
@@ -54,8 +54,52 @@ line, with a single run of compilation and tests, and an exit code):
 This provides an exit code of 0 if all modules compiled and all tests
 passed, 1 otherwise.
 
+Emacs
+-----
+
+The text output of extremeforge is designed to allow direct navigation
+to source files on compile errors, warnings or test failures, when run
+from within Emacs.
+
+To achieve this add the following to your .emacs:
+
+(add-hook 'erlang-mode-hook
+	  (function (lambda ()
+		      (unless (or (file-exists-p "makefile")
+				  (file-exists-p "Makefile"))
+			(set
+			 (make-local-variable 'compile-command)
+			 (concat
+			  "erl -sname forge -noinput "
+			  "-pa /path/to/install/ebin "
+			  " -run extremeforge start"))))))
+
+From an Erlang source file buffer (in erlang-mode), you can now call
+M-x compile to start Extreme Forge in a compilation buffer where it
+will keep running. It will compile and test all Erlang source files in
+or below the directory of the current buffer. Every time a source file
+is saved, modifications will be recompiled and tests re-run.
+Compilation-mode commands may be used to navigate directly to errors.
+
+Note
+----
+
+Saving a file without modifications (or using 'touch') is not
+sufficient to trigger a recompile: Extreme Forge only recompiles if
+the content has changed.
+
+Known issues
+------------
+
+Extreme Forge currently does not detect that source files need to be
+recompiled when a file that they include has been modified.
+
 LEGAL MATTERS
 -------------
+
+Copyright (c) 2004-2010 Dominic Williams, Nicolas Charpentier,
+Virgile Delecolle, Fabrice Nourisson and Jacques Couvreur.
+All rights reserved.
 
 This software is licensed under the new (2-clause) BSD licence.
 See the file COPYING located in the src directory.
