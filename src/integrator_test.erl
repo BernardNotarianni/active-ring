@@ -96,11 +96,11 @@ when_all_compile_tests_are_run_in_separate_node (Root, Fs) ->
     {totals, {3,0,0,0,0,0}} = receive_one (),
     {totals, {4,0,0,0,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {4,1,0,0,0,0}} = receive_one (),
+    {totals, {4,1,0,_,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {4,2,0,0,0,0}} = receive_one (),
+    {totals, {4,2,0,_,0,0}} = receive_one (),
     {compile, _} = receive_one (),
-    {totals, {4,3,0,2,0,0}} = receive_one (),
+    {totals, {4,3,0,_,0,0}} = receive_one (),
     {compile, _} = receive_one (),
     {totals, Totals} = receive_one (),
     {4,4,0,4,0,0} = Totals,
@@ -141,14 +141,9 @@ new_files_are_counted_before_compile_results_are_reported (Root, Fs) ->
     lists: foreach (
       fun (F) -> Integrator ! {{file, ".erl"}, F, found} end,
       [Compiles, Warnings, Has_tests]),
-    {1,0,0,0,0,0} = receive_totals (),
-    {2,0,0,0,0,0} = receive_totals (),
-    {3,0,0,0,0,0} = receive_totals (),
-    {3,1,0,0,0,0} = receive_totals (),
-    {3,2,0,0,0,0} = receive_totals (),
-    {3,3,0,2,0,0} = receive_totals (),
-    {3,3,0,2,1,0} = receive_totals (),
-    {3,3,0,2,2,0} = receive_totals (),
+    ok = receive_until_found ({totals, {3, 0, 0, 0, 0, 0}}),
+    ok = receive_until_found ({totals, {3, 3, 0, 2, 0, 0}}),
+    ok = receive_until_found ({totals, {3, 3, 0, 2, 2, 0}}),
     Integrator ! stop,
     stopped = receive_one (),
     ok.
@@ -208,11 +203,6 @@ source_can_include_from_various_places (Root, _) ->
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
 
-receive_totals () ->
-    receive {totals, Totals} -> Totals;
-	    _ -> receive_totals ()
-    after 3000 -> timeout end.
-	     
 receive_until_found (M) ->
     receive M -> ok;
 	    _ -> receive_until_found (M)
