@@ -10,6 +10,8 @@
 -export ([includes/1]).
 -export ([compile/2]).
 -export (['OTP_include_dir'/1]).
+-export ([member_of_includes/3]).
+-export ([normalise_filename/1]).
 
 compile (File_name, Options) ->
     case compile (fun compile: file/2, File_name, Options) of
@@ -67,3 +69,32 @@ includes_from_forms ({ok, Forms}) ->
     Local = filename: dirname (File),
     Top = filename: dirname (Local),
     filename: join (Top, "include").
+
+member_of_includes (File, Source, Includes) ->
+    lists: any (member_of_include_fun (File, Source), Includes).
+
+member_of_include_fun (File, Source) ->
+    fun (Include) ->
+	    Potential = potential_includes (Include, Source),
+	    lists: member (File, Potential)
+    end.
+
+potential_includes (Include, Source) ->
+    Source_dir = filename: dirname (Source),
+    Absolute_include = filename: join (Source_dir, Include),
+    OTP_include_dir = 'OTP_include_dir' (Source),
+    Absolute_OTP_include = filename: join (OTP_include_dir, Include),
+    Absolute_include2 = normalise_filename(Absolute_include),
+    [Absolute_include, Absolute_OTP_include, Absolute_include2].
+
+normalise_filename (File) ->
+    Dirs = filename: split (File),
+    filename: join (normalise_filename (Dirs, [])).
+
+normalise_filename ([".." | Tail], [_ | Acc])->
+    normalise_filename (Tail, Acc);
+normalise_filename ([Dir | Tail], Acc) ->
+    normalise_filename (Tail, [Dir | Acc]);
+normalise_filename ([], Acc) ->
+    lists: reverse (Acc).
+

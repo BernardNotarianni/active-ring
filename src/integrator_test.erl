@@ -8,6 +8,7 @@
 -test (slave_node).
 -test (slave_node_nonode).
 -test (consul_forms).
+-test (includers_are_recompiled_when_included_change).
 -export ([with_files/2]).
 -export ([start_stop/0]).
 -export ([modified_files_are_recompiled/0]).
@@ -17,6 +18,7 @@
 -export ([consul_forms/0]).
 -export ([consul_forms_test1/0]).
 -export ([consul_forms_test2/0]).
+-export ([includers_are_recompiled_when_included_change/0]).
 
 start_stop () ->
     Args = [self ()],
@@ -196,6 +198,38 @@ source_can_include_from_various_places (Root, _) ->
     Ts = [mydef1, mydef2, def1, def2, appdef, third],
     Expected_to_pass = [{tests, T} || T <- Ts],
     check_tests (Totals, Expected_to_pass),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+
+includers_are_recompiled_when_included_change () ->
+    Files = [{file, "my.erl",
+	      ["-module (my).",
+	       "-export ([run/0, test/0]).",
+	       "-test (test).",
+	       "-include (\"my.hrl\").",
+	       "run () -> ?mydef.",
+	       "test () -> hello = my: run ()."]},
+	     {file, "my.hrl", 
+	      "-define (mydef, goodbye)."}],
+    ok = fixtures: use_tree (Files, fun includers/2).
+
+includers (Root, Files) ->
+    [Module, Include] = [filename: join (Root, F) || {file, F, _} <- Files],
+    Integrator = spawn_link (integrator, init, [self (), [Root], []]),
+    Integrator ! {{file, ".erl"}, Module, found},
+    Integrator ! {{file, ".hrl"}, Include, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, ok, []}} = receive_one (),
+    {totals, {1,1,0,1,0,0}=Totals} = receive_one (),
+    check_tests (Totals, []),
+    Binary = list_to_binary ("-define (mydef, hello)."),
+    ok = file: write_file (Include, Binary),
+    Integrator ! {{file, ".hrl"}, Include, changed},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, ok, []}} = receive_one (),
+    {totals, {1,1,0,1,0,0}=Totals} = receive_one (),
+    check_tests (Totals, [{my, test}]),
     Integrator ! stop,
     stopped = receive_one (),
     ok.

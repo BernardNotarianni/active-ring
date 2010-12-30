@@ -7,14 +7,15 @@
 -export ([slave_node/1]).
 -export ([consul_forms/1]).
 -import (dict, [new/0, store/3, fetch/2, fold/3, erase/2]).
--record (state, {mux, includes, slave, modules}).
+-record (state, {mux, includes, slave, modules, included}).
 
 init (Mux) ->
     init (Mux, [], []).
 
 init (Mux, Dirs, Options) ->
     S = #state {mux = Mux, includes = Dirs, slave = slave (), modules = new ()},
-    State = options (Options, S),
+    S2 = S#state {included = new ()},
+    State = options (Options, S2),
     idle (State).
 
 slave () ->
@@ -45,9 +46,16 @@ receive_external (State, Timeout, Continue) ->
 	    Next = remove (F, State),
 	    pending (Next);
 	{{file, ".erl"}, F, _} ->
-	    Modules = store (F, uncompiled, State#state.modules),
-	    Next = compile (F, State#state{modules = Modules}),
-	    pending (Next);
+	    pending (compile (F, State));
+	{{file, _}, F, changed} ->
+	    case include (F, State#state.included) of
+		[] ->
+		    receive_external (State, Timeout, Continue);
+		Modules ->
+		    Compile = fun (M, S) -> compile (M, S) end,
+		    Next = lists: foldl (Compile, State, Modules),
+		    pending (Next)
+	    end;
 	{{file, _}, _, _} ->
 	    receive_external (State, Timeout, Continue)
     after (Timeout) ->
@@ -80,7 +88,8 @@ test_if_necessary (_, State) ->
     pending (State).
 
 compile (F, State) ->
-    Cleared = clear_tests (State),
+    Modules = store (F, uncompiled, State#state.modules),
+    Cleared = clear_tests (State#state{modules = Modules}),
     #state {mux=Mux, modules=Modules} = Cleared,
     Mux ! totals (Modules),
     Self = self (),
@@ -92,12 +101,32 @@ compile (Pid, F, Includes) ->
     Options = [{i, P} || P <- All_includes],
     Compilation = modules: compile (F, Options),
     Pid ! {compile, Compilation}.
+
+include (File, Included) ->
+    fold (include_fun (File), [], Included).
+
+include_fun (File) ->
+    fun (F, Includes, Acc) ->
+	    case modules: member_of_includes (File, F, Includes) of
+		true ->
+		    [F | Acc];
+		_ ->
+		    Acc
+	    end
+    end.
+
+store_included (File, State) ->
+    Includes = modules: includes (File),
+    Included = store (File, Includes, State#state.included),
+    State#state {included = Included}.
     
-store_compilation ({File, Module, error, Errors}, State) ->
+store_compilation ({File, Module, error, Errors}, S) ->
+    State = store_included (File, S),
     #state {mux = Mux, modules = Modules} = State,
     Mux ! {compile, {Module, error, Errors}},
     State#state {modules = store (File, error, Modules)};
-store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, State) ->
+store_compilation ({File, Module, ok, {Binary, Ts, Ws}}, S) ->
+    State = store_included (File, S),
     #state {mux = Mux, slave = Slave, modules = Modules} = State,
     Mux ! {compile, {Module, ok, Ws}},
     Load_args = [Module, File, Binary],

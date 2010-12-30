@@ -7,12 +7,16 @@
 -test (locate).
 -test (includes).
 -test ('OTP_include_dir').
+-test (normalise_filename).
+-test (member_of_includes).
 -export ([module_name/0]).
 -export ([locate/0]).
 -export ([includes_tree/0]).
 -export ([includes/0]).
 -export ([with_files/2]).
 -export (['OTP_include_dir'/0]).
+-export ([member_of_includes/0]).
+-export ([normalise_filename/0]).
 
 module_name () ->
     hello = modules: module_name ("hello.erl"),
@@ -84,3 +88,40 @@ with_files (Root, Fs) ->
     File = filename: join (["app", "src", "foo.erl"]),
     Include = filename: join ("app", "include"),
     Include = modules: 'OTP_include_dir' (File).
+
+normalise_filename () ->
+    "/tmp/toto/foo" = modules: normalise_filename ("/tmp/toto/foo"),
+    "/tmp/foo" = modules: normalise_filename ("/tmp/toto/../foo"), 
+    "/foo" = modules: normalise_filename ("/tmp/toto/../../foo"),
+    "/tmp/foo" = modules: normalise_filename ("/tmp/./foo").
+   
+member_of_includes () ->
+    Tests =
+	[{"/tmp/proj/toto.hrl",
+	  "/tmp/proj/toto.erl",
+	  ["toto.hrl"],
+	  true},
+	 {"/tmp/proj/toto.hrl",
+	  "/other/toto.erl",
+	  ["titi.xxx", "toto.hrl"],
+	 false},
+	 {"/tmp/app/include/myinclude.hrl",
+	  "/tmp/app/src/foo.erl",
+	  ["myinclude.hrl"],
+	  true},
+	 {"/tmp/app/include/myinclude.hrl",
+	  "/tmp/app/src/foo.erl",
+	  ["../include/myinclude.hrl"],
+	  true},
+	 {"/tmp/app/include/myinclude.hrl",
+	  "/tmp/app/src/foo.erl",
+	  ["../../app/include/myinclude.hrl"],
+	  true}],
+    Test = fun ({F, S, Is, Expected}, Count) ->
+		   Result = modules: member_of_includes (F, S, Is),
+		   {Count, Expected} = {Count, Result},
+		   Count + 1
+	   end,
+    lists: foldl (Test, 1, Tests),
+    ok.
+    
