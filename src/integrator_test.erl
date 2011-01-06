@@ -1,4 +1,4 @@
-%%% Copyright (C) Dominic Williams
+%%% Copyright (C) Dominic Williams, Fabrice Nourisson
 %%% All rights reserved.
 %%% See file COPYING.
 
