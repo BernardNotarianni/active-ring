@@ -25,7 +25,6 @@
 -export ([recompiles_when_a_missing_include_is_found/0]).
 -export ([corrected_files_are_recompiled/0]).
 -export ([recompiles_when_an_included_is_lost/0]).
-%% TODO: avoid recompiling when an include is found at startup after a source.
 
 start_stop () ->
     Args = [self ()],
@@ -44,7 +43,8 @@ with_files (Root, Fs) ->
     ok.
 
 with_directories (Root, Tree) ->
-    ok = source_can_include_from_various_places (Root, Tree).
+    ok = source_can_include_from_various_places (Root, Tree),
+    ok = at_startup_doesnt_compile_twice_if_included_is_found_after_source(Root, Tree).
 
 new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     Files = lists: sublist (Fs, 4),
@@ -252,8 +252,8 @@ includers_are_recompiled_when_included_change () ->
 includers (Root, Files) ->
     [Module, Include] = [filename: join (Root, F) || {file, F, _} <- Files],
     Integrator = spawn_link (integrator, init, [self (), [Root], []]),
-    Integrator ! {{file, ".erl"}, Module, found},
     Integrator ! {{file, ".hrl"}, Include, found},
+    Integrator ! {{file, ".erl"}, Module, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {my, ok, []}} = receive_one (),
     {totals, {1,1,0,1,0,0}=Totals} = receive_one (),
@@ -308,8 +308,8 @@ recompiles_when_an_included_is_lost () ->
 recompiles_when_an_included_is_lost (Root, Files) ->
     [Module, Include] = [filename: join (Root, F) || {file, F, _} <- Files],
     Integrator = spawn_link (integrator, init, [self (), [Root], []]),
-    Integrator ! {{file, ".erl"}, Module, found},
     Integrator ! {{file, ".hrl"}, Include, found},
+    Integrator ! {{file, ".erl"}, Module, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {my, ok, []}} = receive_one (),
     {totals, {1,1,0,0,0,0}} = receive_one (),
@@ -322,7 +322,22 @@ recompiles_when_an_included_is_lost (Root, Files) ->
     stopped = receive_one (),
     ok.
     
-    
+at_startup_doesnt_compile_twice_if_included_is_found_after_source (Root, _) ->
+    Project = filename: join (Root, "project"),
+    Third = filename: join (Root, "3rdparty"),
+    Include = filename: join ([Project, "app1", "include", "myinc.hrl"]),
+    Source = filename: join ([Project, "app1", "src", "my1.erl"]),
+    Options = [{includes, [Third]}],
+    Integrator = spawn_link (integrator, init, [self(), [Project], Options]),
+    Integrator ! {{file, ".erl"}, Source, found},
+    Integrator ! {{file, ".hrl"}, Include, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my1, ok, []}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (),   
+    timeout = receive_one (),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
 
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
