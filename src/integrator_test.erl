@@ -4,14 +4,16 @@
 
 -module (integrator_test).
 -test (start_stop).
--test (modified_files_are_recompiled).
+-test (modified_files_with_tests_are_recompiled).
+-test (corrected_files_are_recompiled).
 -test (slave_node).
 -test (slave_node_nonode).
 -test (consul_forms).
 -test (includers_are_recompiled_when_included_change).
+-test (recompiles_when_a_missing_include_is_found).
 -export ([with_files/2]).
 -export ([start_stop/0]).
--export ([modified_files_are_recompiled/0]).
+-export ([modified_files_with_tests_are_recompiled/0]).
 -export ([slave_node/0]).
 -export ([slave_node_nonode/0]).
 -export ([with_directories/2]).
@@ -19,6 +21,11 @@
 -export ([consul_forms_test1/0]).
 -export ([consul_forms_test2/0]).
 -export ([includers_are_recompiled_when_included_change/0]).
+-export ([recompiles_when_a_missing_include_is_found/0]).
+-export ([corrected_files_are_recompiled/0]).
+%% TODO: recompile when an included file is removed...
+%%       avoid recompiling when an include is found at startup after a source.
+%%
 
 start_stop () ->
     Args = [self ()],
@@ -64,11 +71,39 @@ new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     stopped = receive_one (),
     ok.
 
-modified_files_are_recompiled () ->
-    Tree = [{file, "foo.erl", "foo"}],
-    fixtures: use_tree (Tree, fun modified_files_are_recompiled/2).
+modified_files_with_tests_are_recompiled () ->
+    Tree = [{file, "foo.erl",
+	     ["-module (foo).",
+	      "-test (exports).",
+	      "-export ([myfun/0]).",
+	      "myfun () -> ok."]},
+	    {file, "bar.erl", "-module (bar)."}],
+    fixtures: use_tree (Tree, fun modified_files_with_tests_are_recompiled/2).
 
-modified_files_are_recompiled (Root, [{file, F, _}]) ->
+modified_files_with_tests_are_recompiled (Root, Files) ->
+    [Foo, Bar] = [filename: join (Root, F) || {file, F, _} <- Files],
+    Integrator = spawn_link (integrator, init, [self()]),
+    Integrator ! {{file, ".erl"}, Foo, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {foo, ok, []}} = receive_one (),
+    {totals, {1,1,0,1,0,0}} = receive_one (),
+    {test, {foo, myfun, 0, pass}} = receive_one (),
+    {totals, {1,1,0,1,1,0}} = receive_one (),
+    Integrator ! {{file, ".erl"}, Bar, found},
+    {totals, {2,1,0,1,0,0}} = receive_one (),
+    {compile, {bar, ok, []}} = receive_one (),
+    {totals, {2,2,0,1,0,0}} = receive_one (),
+    {test, {foo, myfun, 0, pass}} = receive_one (),
+    {totals, {2,2,0,1,1,0}} = receive_one (),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+
+corrected_files_are_recompiled () ->
+    Tree = [{file, "foo.erl", "foo"}],
+    fixtures: use_tree (Tree, fun corrected_files_are_recompiled/2).
+
+corrected_files_are_recompiled (Root, [{file, F, _}]) ->
     Filename = filename: join (Root, F),
     Integrator = spawn_link (integrator, init, [self()]),
     Integrator ! {{file, ".erl"}, Filename, found},
@@ -230,6 +265,32 @@ includers (Root, Files) ->
     {compile, {my, ok, []}} = receive_one (),
     {totals, {1,1,0,1,0,0}=Totals} = receive_one (),
     check_tests (Totals, [{my, test}]),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+
+recompiles_when_a_missing_include_is_found () ->
+    Files = [{file, "my.erl",
+	      ["-module (my).",
+	       "-include (\"my.hrl\").",
+	       "-export ([foo/0]).", 
+	       "foo () -> ?mydef."]}],
+    ok = fixtures: use_tree (Files, fun recompiles_when_a_missing_include_is_found/2).
+
+recompiles_when_a_missing_include_is_found (Root, [{file, File, _}]) ->
+    Module = filename: join (Root, File),
+    Integrator = spawn_link (integrator, init, [self (), [Root], []]),
+    Integrator ! {{file, ".erl"}, Module, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, error, _}} = receive_one (),
+    {totals, {1,0,1,0,0,0}} = receive_one (),
+    Binary = list_to_binary ("-define (mydef, hello)."),
+    Include = filename: join (Root, "my.hrl"),
+    ok = file: write_file (filename: join (Root, "my.hrl"), Binary),
+    Integrator ! {{file, ".hrl"}, Include, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, ok, []}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (),
     Integrator ! stop,
     stopped = receive_one (),
     ok.

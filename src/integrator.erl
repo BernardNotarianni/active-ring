@@ -47,7 +47,7 @@ receive_external (State, Timeout, Continue) ->
 	    pending (Next);
 	{{file, ".erl"}, F, _} ->
 	    pending (compile (F, State));
-	{{file, _}, F, changed} ->
+	{{file, _}, F, Event} when Event == changed; Event == found ->
 	    case include (F, State#state.included) of
 		[] ->
 		    receive_external (State, Timeout, Continue);
@@ -88,8 +88,8 @@ test_if_necessary (_, State) ->
     pending (State).
 
 compile (F, State) ->
-    Modules = store (F, uncompiled, State#state.modules),
-    Cleared = clear_tests (State#state{modules = Modules}),
+    Uncompiled = store (F, uncompiled, State#state.modules),
+    Cleared = clear_tests (State#state{modules = Uncompiled}),
     #state {mux=Mux, modules=Modules} = Cleared,
     Mux ! totals (Modules),
     Self = self (),
