@@ -47,7 +47,7 @@ receive_external (State, Timeout, Continue) ->
 	    pending (Next);
 	{{file, ".erl"}, F, _} ->
 	    pending (compile (F, State));
-	{{file, _}, F, Event} when Event == changed; Event == found ->
+	{{file, _}, F, _} ->
 	    case include (F, State#state.included) of
 		[] ->
 		    receive_external (State, Timeout, Continue);
@@ -55,9 +55,7 @@ receive_external (State, Timeout, Continue) ->
 		    Compile = fun (M, S) -> compile (M, S) end,
 		    Next = lists: foldl (Compile, State, Modules),
 		    pending (Next)
-	    end;
-	{{file, _}, _, _} ->
-	    receive_external (State, Timeout, Continue)
+	    end
     after (Timeout) ->
 	    Continue (State)
     end.

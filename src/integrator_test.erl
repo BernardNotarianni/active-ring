@@ -4,16 +4,17 @@
 
 -module (integrator_test).
 -test (start_stop).
--test (modified_files_with_tests_are_recompiled).
+-test (tests_are_cleared_when_anything_recompiles).
 -test (corrected_files_are_recompiled).
 -test (slave_node).
 -test (slave_node_nonode).
 -test (consul_forms).
 -test (includers_are_recompiled_when_included_change).
 -test (recompiles_when_a_missing_include_is_found).
+-test (recompiles_when_an_included_is_lost).
 -export ([with_files/2]).
 -export ([start_stop/0]).
--export ([modified_files_with_tests_are_recompiled/0]).
+-export ([tests_are_cleared_when_anything_recompiles/0]).
 -export ([slave_node/0]).
 -export ([slave_node_nonode/0]).
 -export ([with_directories/2]).
@@ -23,9 +24,8 @@
 -export ([includers_are_recompiled_when_included_change/0]).
 -export ([recompiles_when_a_missing_include_is_found/0]).
 -export ([corrected_files_are_recompiled/0]).
-%% TODO: recompile when an included file is removed...
-%%       avoid recompiling when an include is found at startup after a source.
-%%
+-export ([recompiles_when_an_included_is_lost/0]).
+%% TODO: avoid recompiling when an include is found at startup after a source.
 
 start_stop () ->
     Args = [self ()],
@@ -71,16 +71,16 @@ new_files_are_compiled_and_scanned_for_tests (Root, Fs) ->
     stopped = receive_one (),
     ok.
 
-modified_files_with_tests_are_recompiled () ->
+tests_are_cleared_when_anything_recompiles () ->
     Tree = [{file, "foo.erl",
 	     ["-module (foo).",
 	      "-test (exports).",
 	      "-export ([myfun/0]).",
 	      "myfun () -> ok."]},
 	    {file, "bar.erl", "-module (bar)."}],
-    fixtures: use_tree (Tree, fun modified_files_with_tests_are_recompiled/2).
+    fixtures: use_tree (Tree, fun tests_are_cleared_when_anything_recompiles/2).
 
-modified_files_with_tests_are_recompiled (Root, Files) ->
+tests_are_cleared_when_anything_recompiles (Root, Files) ->
     [Foo, Bar] = [filename: join (Root, F) || {file, F, _} <- Files],
     Integrator = spawn_link (integrator, init, [self()]),
     Integrator ! {{file, ".erl"}, Foo, found},
@@ -286,7 +286,7 @@ recompiles_when_a_missing_include_is_found (Root, [{file, File, _}]) ->
     {totals, {1,0,1,0,0,0}} = receive_one (),
     Binary = list_to_binary ("-define (mydef, hello)."),
     Include = filename: join (Root, "my.hrl"),
-    ok = file: write_file (filename: join (Root, "my.hrl"), Binary),
+    ok = file: write_file (Include, Binary),
     Integrator ! {{file, ".hrl"}, Include, found},
     {totals, {1,0,0,0,0,0}} = receive_one (),
     {compile, {my, ok, []}} = receive_one (),
@@ -294,6 +294,35 @@ recompiles_when_a_missing_include_is_found (Root, [{file, File, _}]) ->
     Integrator ! stop,
     stopped = receive_one (),
     ok.
+
+recompiles_when_an_included_is_lost () ->
+    Files = [{file, "my.erl",
+	      ["-module (my).",
+	       "-export ([run/0]).",
+	       "-include (\"my.hrl\").",
+	       "run () -> ?mydef."]},
+	     {file, "my.hrl", 
+	      "-define (mydef, goodbye)."}],
+    ok = fixtures: use_tree (Files, fun recompiles_when_an_included_is_lost/2).
+
+recompiles_when_an_included_is_lost (Root, Files) ->
+    [Module, Include] = [filename: join (Root, F) || {file, F, _} <- Files],
+    Integrator = spawn_link (integrator, init, [self (), [Root], []]),
+    Integrator ! {{file, ".erl"}, Module, found},
+    Integrator ! {{file, ".hrl"}, Include, found},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, ok, []}} = receive_one (),
+    {totals, {1,1,0,0,0,0}} = receive_one (),
+    ok = file: delete (Include),
+    Integrator ! {{file, ".hrl"}, Include, lost},
+    {totals, {1,0,0,0,0,0}} = receive_one (),
+    {compile, {my, error, _}} = receive_one (),
+    {totals, {1,0,1,0,0,0}} = receive_one (),
+    Integrator ! stop,
+    stopped = receive_one (),
+    ok.
+    
+    
 
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
