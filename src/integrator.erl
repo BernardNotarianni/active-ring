@@ -224,38 +224,54 @@ consul_forms (Module) ->
 %%
 %% -module (Module).
 %% -export ([test/3]).
-%% test (M, F, Pid) ->
-%%    case catch (M: F()) of
-%%       {'EXIT', Error} ->
-%%          Pid ! {test, M, F, {error, Error}};
-%%       _ ->
-%%          Pid ! {test, M, F, pass}
-%%    end.
+%% test (M, F, Caller) ->
+%%     {Pid, Monitor} = spawn_monitor (M, F, []),
+%%     receive
+%% 	      {'DOWN', Monitor, process, Pid, normal} ->
+%% 	         Caller ! {test, M, F, pass};
+%% 	      {'DOWN', Monitor, process, _, Error} ->
+%% 	         Caller ! {test, M, F, {error, Error}}
+%%     end.
     [{attribute,1,module,Module},
      {attribute,2,export,[{test,3}]},
-     {function,4,test,3,
-      [{clause,4,
-	[{var,4,'M'},{var,4,'F'},{var,4,'Pid'}],
+     {function,3,test,3,
+      [{clause,3,
+	[{var,3,'M'},{var,3,'F'},{var,3,'Caller'}],
 	[],
-	[{'case',5,
-	  {'catch',5,{call,5,{remote,5,{var,5,'M'},{var,5,'F'}},[]}},
+	[{match,4,
+	  {tuple,4,[{var,4,'Pid'},{var,4,'Monitor'}]},
+	  {call,4,
+	   {atom,4,spawn_monitor},
+	   [{var,4,'M'},{var,4,'F'},{nil,4}]}},
+	 {'receive',5,
 	  [{clause,6,
-	    [{tuple,6,[{atom,6,'EXIT'},{var,6,'Error'}]}],
+	    [{tuple,6,
+	      [{atom,6,'DOWN'},
+	       {var,6,'Monitor'},
+	       {atom,6,process},
+	       {var,6,'Pid'},
+	       {atom,6,normal}]}],
 	    [],
 	    [{op,7,'!',
-	      {var,7,'Pid'},
+	      {var,7,'Caller'},
 	      {tuple,7,
 	       [{atom,7,test},
 		{var,7,'M'},
 		{var,7,'F'},
-		{tuple,7,[{atom,7,error},{var,7,'Error'}]}]}}]},
+		{atom,7,pass}]}}]},
 	   {clause,8,
-	    [{var,8,'_'}],
+	    [{tuple,8,
+	      [{atom,8,'DOWN'},
+	       {var,8,'Monitor'},
+	       {atom,8,process},
+	       {var,8,'_'},
+	       {var,8,'Error'}]}],
 	    [],
 	    [{op,9,'!',
-	      {var,9,'Pid'},
+	      {var,9,'Caller'},
 	      {tuple,9,
 	       [{atom,9,test},
 		{var,9,'M'},
 		{var,9,'F'},
-		{atom,9,pass}]}}]}]}]}]}].
+		{tuple,9,
+		 [{atom,9,error},{var,9,'Error'}]}]}}]}]}]}]}].

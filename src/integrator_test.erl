@@ -12,6 +12,7 @@
 -test (includers_are_recompiled_when_included_change).
 -test (recompiles_when_a_missing_include_is_found).
 -test (recompiles_when_an_included_is_lost).
+-test (tests_may_spawn_link).
 -export ([with_files/2]).
 -export ([start_stop/0]).
 -export ([tests_are_cleared_when_anything_recompiles/0]).
@@ -21,10 +22,12 @@
 -export ([consul_forms/0]).
 -export ([consul_forms_test1/0]).
 -export ([consul_forms_test2/0]).
+-export ([consul_forms_test3/0]).
 -export ([includers_are_recompiled_when_included_change/0]).
 -export ([recompiles_when_a_missing_include_is_found/0]).
 -export ([corrected_files_are_recompiled/0]).
 -export ([recompiles_when_an_included_is_lost/0]).
+-export ([tests_may_spawn_link/0]).
 
 start_stop () ->
     Args = [self ()],
@@ -339,6 +342,30 @@ at_startup_doesnt_compile_twice_if_included_is_found_after_source (Root, _) ->
     stopped = receive_one (),
     ok.
 
+tests_may_spawn_link () ->
+    Files = [{file, "mytest.erl",
+	      ["-module (mytest).",
+	       "-test (mytest).",
+	       "-export ([mytest/0]).",
+	       "mytest () ->",
+	       "spawn_link (nonexistent_module, nonexistent_function, []),",
+	       "timer: sleep (1000),",
+	       "ok."]}],
+    ok = fixtures: use_tree (Files, fun tests_may_spawn_link/2).
+
+tests_may_spawn_link (Root, [{file, F, _}]) ->
+    Mytest = filename: join (Root, F),
+    Integrator = spawn_link (integrator, init, [self (), [Root], []]),
+    Integrator ! {{file, ".erl"}, Mytest, found},
+    {totals, _} = receive_one (),
+    {compile, _} = receive_one (),
+    {totals, {1,1,0,1,0,0}} = receive_one (),
+    {test, {mytest, mytest, 0, {fail, Reason}}} = receive_one (),
+    undef = dict: fetch (error, Reason),
+    {totals, {1,1,0,1,0,1}} = receive_one (),
+    Integrator ! stop,
+    ok.
+
 receive_one () ->
     receive M -> M after 3000 -> timeout end.
 
@@ -362,16 +389,26 @@ consul_forms_test1 () ->
 consul_forms_test2 () ->
     yohoho: and_a_bottle_of_rhum ().
 
+consul_forms_test3 () ->
+    spawn_link (yohoho, and_a_bottle_of_rhum, []),
+    timer: sleep (500),
+    ok.
+
 consul_forms () ->
     Binary = modules: forms_to_binary (integrator: consul_forms (myconsul)),
     {module, myconsul} = code: load_binary (myconsul, "myconsul.beam", Binary),
     try
-	Result1 = {test, ?MODULE, consul_forms_test1, pass},
 	Result1 = myconsul: test (?MODULE, consul_forms_test1, self ()),
 	Result1 = receive_one (),
+	{test, ?MODULE, consul_forms_test1, pass} = Result1,
+
 	Result2 = myconsul: test (?MODULE, consul_forms_test2, self ()),
-	{test, ?MODULE, consul_forms_test2, {error, _}} = Result2,
-	Result2 = receive_one ()
+	Result2 = receive_one (),
+	{test, ?MODULE, consul_forms_test2, {error, {undef, _}}} = Result2,
+
+	Result3 = myconsul: test (?MODULE, consul_forms_test3, self ()),
+	Result3 = receive_one (),
+	{test, ?MODULE, consul_forms_test3, {error, {undef, _}}} = Result3
     after
 	code: purge (myconsul),
       code: delete (myconsul)
