@@ -3,38 +3,38 @@
 %%% See file COPYING.
 
 -module (text_printer).
--export ([init/1]).
+-export ([init/2]).
 
-init (Device) ->
-    wait (Device).
+init (Device, GreenBar) ->
+    wait (Device, GreenBar).
 
-wait (Device) ->
+wait (Device, GreenBar) ->
     receive
 	stop ->
 	    bye;
 	{totals, {M, C, E, _, _, _}} when M > C + E ->
 	    io: put_chars (Device, io_lib: fwrite ("Compiling: ", [])),
-	    compiling (Device);
+	    compiling (Device, GreenBar);
 	{totals, {M, C, E, T, P, F}} when M == C + E  andalso T > P + F ->
 	    N = T - P - F,
 	    io: put_chars (Device, io_lib: fwrite ("Testing ~p: ", [N])),
- 	    testing (Device);
+ 	    testing (Device, GreenBar);
 	_ ->
-	    wait (Device)
+	    wait (Device, GreenBar)
     end.
 
-compiling (Device) ->
+compiling (Device, GreenBar) ->
     receive
 	{compile, {_, ok, []}} ->
 	    io: put_chars (Device, "."),
-	    compiling (Device);
+	    compiling (Device, GreenBar);
 	{compile, {_, ok, Warnings}} ->
 	    io: put_chars (Device, [$\n | warnings (Warnings)]),
-	    compiling (Device);
+	    compiling (Device, GreenBar);
 	{compile, {_, error, {Errors, Warnings}}} ->
 	    Cs = [$\n | [errors (Errors), warnings (Warnings)]],
 	    io: put_chars (Device, Cs),
-	    compiling (Device);
+	    compiling (Device, GreenBar);
 	{totals, {M, C, E, T, P, F}} when M == C + E ->
 	    io: put_chars (Device, ["\n" | end_compile (C, M)]),
 	    if
@@ -42,22 +42,28 @@ compiling (Device) ->
 		    N = T - P - F,
 		    Chars = io_lib: fwrite ("Testing ~p: ", [N]),
 		    io: put_chars (Device, Chars),
-		    testing (Device);
+		    testing (Device, GreenBar);
 		true ->
-		    wait (Device)
+		    wait (Device, GreenBar)
 	    end;
 	_ ->
-	    compiling (Device)
+	    compiling (Device, GreenBar)
     end.
 
-testing (Device) ->
+testing (Device, GreenBar) ->
     receive
 	{totals, {_, _, _, T, P, F}} when T == P + F ->
 	    io: put_chars (Device, ["\n" | end_tests (P, T)]),
-	    wait (Device);
+	    if
+		P == T ->
+		    GreenBar ! green;
+		true ->
+		    GreenBar ! red
+	    end,
+	    wait (Device, GreenBar);
 	{test, {_, _, _, pass}} ->
 	    io: put_chars (Device, "."),
-	    testing (Device);
+	    testing (Device, GreenBar);
 	{test, {_, _, _, {fail, Reason}}} ->
 	    Error = dict: fetch (error, Reason),
 	    Stack = dict: fetch (stack_trace, Reason),
@@ -67,9 +73,9 @@ testing (Device) ->
 		     "   Error: ~p~n"
 		     "   Stack: ~p~n", [File, Line, M, F, A, Error, Stack]),
 	    io: put_chars (Device, Output),
-	    testing (Device);
+	    testing (Device, GreenBar);
 	_ ->
-	    testing (Device)
+	    testing (Device, GreenBar)
     end.
 
 warnings (Ws) -> items (warning, Ws).

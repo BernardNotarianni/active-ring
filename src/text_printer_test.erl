@@ -10,7 +10,8 @@
 -export ([compile_output_with_tests/0]).
 
 compile_output_no_tests () ->
-    P = spawn_link (text_printer, init, [self ()]),
+
+    P = spawn_link (text_printer, init, [self (), self()]),
     P ! {totals, {4, 0, 0, 0, 0, 0}},
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
@@ -39,7 +40,8 @@ compile_output_no_tests () ->
     ok.
 
 compile_output_with_tests () ->
-    P = spawn_link (text_printer, init, [self ()]),
+
+    P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {2, 0, 0, 0, 0, 0}},
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mytests, ok, []}},
@@ -51,11 +53,13 @@ compile_output_with_tests () ->
     P ! {totals, {2, 1, 1, 3, 0, 0}},
     S = receive_io_request (P),
     <<"\n1/2 successfully compiled.\nCannot run tests.\n">> = S,
+
     {timeout, timeout} = {timeout, receive_io_request (P)},
     ok.
 
 test_output () ->
-    P = spawn_link (text_printer, init, [self ()]),
+
+    P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {1, 0, 0, 0, 0, 0}},
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
@@ -73,14 +77,16 @@ test_output () ->
     P ! {test, {mymodule, test2, 0, {fail, Dict}}},
     E = receive_io_request (P),
     <<"\n/dir/eg_test.erl(12): failure in {eg_test, ok, 0}"
-     "\n   Error: {undef,[{foo,bar,[]},{toto,titi,0}]}"
-     "\n   Stack: [{eg_test,ok,0},{test_runner,run,0}]\n">> = E,
+      "\n   Error: {undef,[{foo,bar,[]},{toto,titi,0}]}"
+      "\n   Stack: [{eg_test,ok,0},{test_runner,run,0}]\n">> = E,
     P ! {totals, {1, 1, 0, 2, 1, 1}},
     <<"\n1/2 successfully tested.\n">> = receive_io_request (P),
+    red = receive_green_bar (), 
     ok.
 
 file_deletion () ->
-    P = spawn_link (text_printer, init, [self ()]),
+
+    P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {2, 0, 0, 0, 0, 0}},
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
@@ -96,13 +102,14 @@ file_deletion () ->
     <<".">> = receive_io_request (P),
     P ! {totals, {2, 2, 0, 1, 1, 0}},
     <<"\n1/1 successfully tested.\n">> = receive_io_request (P),
+    green = receive_green_bar (), 
     P ! {totals, {1, 1, 0, 1, 0, 0}},
     <<"Testing 1: ">> = receive_io_request (P),
     P ! {test, {mytests, test, 0, pass}},
     <<".">> = receive_io_request (P),
     P ! {totals, {1, 1, 0, 1, 1, 0}},
     <<"\n1/1 successfully tested.\n">> = receive_io_request (P),
-    timeout = receive_io_request (P),
+    green = receive_green_bar (),
     ok.
 
 warning () ->
@@ -110,7 +117,7 @@ warning () ->
 
 error () ->
     {"/dir/file2.erl", [{15, erl_parse, ["syntax error before: ",["'->'"]]}]}.
-    
+
 receive_io_request (P) ->
     Self = self (),
     receive
@@ -123,6 +130,14 @@ receive_io_request (P) ->
 	M -> M
     after 1000 -> timeout
     end.
-			   
-	    
-    
+
+receive_green_bar() ->
+    receive
+	green ->
+	    green;
+	red ->
+	    red;
+	neutal ->
+	    neutral
+    after 1000 -> green_bar_timeout
+    end.

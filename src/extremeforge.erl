@@ -22,7 +22,7 @@ stop () ->
 
 init (Roots) ->
     Rs = [filename: absname (R) || R <- Roots],
-    Printer = spawn_link (text_printer, init, [standard_io]),
+    Printer = spawn_link (text_printer, init, [standard_io, green_bar: create()]),
     Integrator = spawn_link (integrator, init, [Printer, Rs, []]),
     F = fun (E) -> Integrator ! E end,
     Ws = [spawn_link (directory_watcher, init_recursive, [R, F]) || R <- Rs],
@@ -46,7 +46,7 @@ run (Roots) ->
 
 init_run (Roots) ->
     Rs = [filename: absname (R) || R <- Roots],
-    Printer = spawn_link (text_printer, init, [standard_io]),
+    Printer = spawn_link (text_printer, init, [standard_io, green_bar: create()]),
     Integrator = spawn_link (integrator, init, [self (), Rs, []]),
     F = fun (E) -> Integrator ! E end,
     Ws = [spawn_link (directory_watcher, init_recursive, [R, F]) || R <- Rs],
