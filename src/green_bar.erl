@@ -27,9 +27,6 @@ loop() ->
       neutral ->
 	  color(179,171,110),
 	  loop();
-    {R,G,B} ->
-	  color(R,G,B),
-	  loop();
       stop ->
 	  exit("stopped")
   end.

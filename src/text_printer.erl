@@ -13,6 +13,7 @@ wait (Device, GreenBar) ->
 	stop ->
 	    bye;
 	{totals, {M, C, E, _, _, _}} when M > C + E ->
+	    GreenBar ! neutral,
 	    io: put_chars (Device, io_lib: fwrite ("Compiling: ", [])),
 	    compiling (Device, GreenBar);
 	{totals, {M, C, E, T, P, F}} when M == C + E  andalso T > P + F ->

@@ -11,8 +11,9 @@
 
 compile_output_no_tests () ->
 
-    P = spawn_link (text_printer, init, [self (), self()]),
+    P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {4, 0, 0, 0, 0, 0}},
+    neutral = receive_green_bar (),
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
     <<".">> = receive_io_request (P),
@@ -31,6 +32,7 @@ compile_output_no_tests () ->
     S = receive_io_request (P),
     <<"\n3/4 successfully compiled.\nCannot run tests.\n">> = S,
     P ! {totals, {4, 3, 0, 0, 0, 0}},
+    neutral = receive_green_bar (),
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {file2, ok, []}},
     <<".">> = receive_io_request (P),
@@ -43,6 +45,7 @@ compile_output_with_tests () ->
 
     P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {2, 0, 0, 0, 0, 0}},
+    neutral = receive_green_bar (),
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mytests, ok, []}},
     <<".">> = receive_io_request (P),
@@ -61,6 +64,7 @@ test_output () ->
 
     P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {1, 0, 0, 0, 0, 0}},
+    neutral = receive_green_bar (),
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
     <<".">> = receive_io_request (P),
@@ -88,6 +92,7 @@ file_deletion () ->
 
     P = spawn_link (text_printer, init, [self (), self ()]),
     P ! {totals, {2, 0, 0, 0, 0, 0}},
+    neutral = receive_green_bar (),
     <<"Compiling: ">> = receive_io_request (P),
     P ! {compile, {mymodule, ok, []}},
     <<".">> = receive_io_request (P),
@@ -137,7 +142,7 @@ receive_green_bar() ->
 	    green;
 	red ->
 	    red;
-	neutal ->
+	neutral ->
 	    neutral
     after 1000 -> green_bar_timeout
     end.
