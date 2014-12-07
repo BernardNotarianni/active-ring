@@ -1,0 +1,14 @@
+{application, activering,
+ [
+  {description, "Activering continuous testing"},
+  {vsn, git},
+  {modules, [
+             extremeforge
+            ]},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
