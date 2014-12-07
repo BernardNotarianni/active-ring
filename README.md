@@ -63,7 +63,7 @@ from within Emacs.
 
 To achieve this add the following to your `.emacs`:
 
-```
+```elisp
 (add-hook 'erlang-mode-hook
 	  (function (lambda ()
 		      (unless (or (file-exists-p "makefile")
