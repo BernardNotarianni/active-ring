@@ -1,4 +1,4 @@
-EXTREME FORGE
+# Active Ring
 
 http://extremeforge.net
 
@@ -65,15 +65,15 @@ To achieve this add the following to your `.emacs`:
 
 ```elisp
 (add-hook 'erlang-mode-hook
-	  (function (lambda ()
-		      (unless (or (file-exists-p "makefile")
-				  (file-exists-p "Makefile"))
-			(set
-			 (make-local-variable 'compile-command)
-			 (concat
-			  "erl -sname forge -noinput "
-			  "-pa /path/to/install/ebin "
-			  " -run extremeforge start"))))))
+ (function (lambda ()
+   (unless (or (file-exists-p "makefile")
+   	           (file-exists-p "Makefile"))
+    (set
+		(make-local-variable 'compile-command)
+		 (concat
+		  "erl -sname forge -noinput "
+		  "-pa /path/to/install/ebin "
+		  " -run extremeforge start"))))))
 ```
 
 From an Erlang source file buffer (in erlang-mode), you can now call
